@@ -1,0 +1,163 @@
+package com.pingplace.ui.settings
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pingplace.model.TriggerType
+import com.pingplace.model.UnitsSystem
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun SettingsScreen(
+    innerPadding: PaddingValues,
+    viewModel: SettingsViewModel
+) {
+    val settings by viewModel.uiState.collectAsStateWithLifecycle()
+
+    Scaffold(
+        modifier = Modifier.padding(innerPadding),
+        topBar = { TopAppBar(title = { Text("Settings") }) }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 32.dp)
+        ) {
+            item {
+                SettingsCard("Default trigger mode") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TriggerType.entries.forEach { trigger ->
+                            AssistChip(
+                                onClick = { viewModel.updateDefaultTrigger(trigger) },
+                                label = { Text(trigger.name.lowercase().replace('_', ' ')) }
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                SettingsCard("Defaults") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(804, 1609, 3218, 8046).forEach {
+                            AssistChip(
+                                onClick = { viewModel.updateDistance(it) },
+                                label = { Text("${it / 1609.0} mi") }
+                            )
+                        }
+                    }
+                    FlowRow(
+                        modifier = Modifier.padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(5, 10, 15, 20).forEach {
+                            AssistChip(
+                                onClick = { viewModel.updateTravelTime(it) },
+                                label = { Text("$it min") }
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                SettingsCard("Units and appearance") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        UnitsSystem.entries.forEach {
+                            AssistChip(
+                                onClick = { viewModel.updateUnits(it) },
+                                label = { Text(it.name) }
+                            )
+                        }
+                    }
+                    SwitchRow(
+                        title = "Notification sound",
+                        checked = settings.soundEnabled,
+                        onCheckedChange = viewModel::updateSoundEnabled
+                    )
+                    SwitchRow(
+                        title = "Dark mode",
+                        checked = settings.darkModeEnabled,
+                        onCheckedChange = viewModel::updateDarkMode
+                    )
+                }
+            }
+            item {
+                SettingsCard("Background help") {
+                    Text("PingPlace works best with fine location, background location, and battery optimization disabled for the app.")
+                    Button(
+                        onClick = viewModel::rerunMonitoring,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    ) {
+                        Text("Run monitoring now")
+                    }
+                    Button(
+                        onClick = viewModel::triggerTestNotification,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                    ) {
+                        Text("Test reminder")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsCard(title: String, content: @Composable () -> Unit) {
+    Card(shape = RoundedCornerShape(24.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            Column(modifier = Modifier.padding(top = 12.dp)) {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(title)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
