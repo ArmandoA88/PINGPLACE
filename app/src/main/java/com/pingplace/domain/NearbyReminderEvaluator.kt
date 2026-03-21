@@ -30,6 +30,7 @@ class NearbyReminderEvaluator(
             .values
             .map { brandReminders ->
                 val sample = brandReminders.first()
+                val isDrivingFast = currentLocation.hasSpeed() && currentLocation.speed >= DRIVING_SPEED_MPS
                 val radius = brandReminders.maxOf { reminder ->
                     when (reminder.triggerType) {
                         TriggerType.DISTANCE -> (reminder.triggerDistanceMeters ?: 1609).toDouble()
@@ -44,17 +45,23 @@ class NearbyReminderEvaluator(
                 ).getOrElse { emptyList() }
 
                 val nearest = nearbyPlaces.minByOrNull { it.distanceMeters }
-                val withinThreshold = nearest != null && brandReminders.any { reminder ->
-                    when (reminder.triggerType) {
-                        TriggerType.DISTANCE ->
-                            nearest.distanceMeters <= (reminder.triggerDistanceMeters ?: 1609)
+                val eligibleReminders = if (nearest == null) {
+                    emptyList()
+                } else {
+                    brandReminders.filter { reminder ->
+                        val meetsTrigger = when (reminder.triggerType) {
+                            TriggerType.DISTANCE ->
+                                nearest.distanceMeters <= (reminder.triggerDistanceMeters ?: 1609)
 
-                        TriggerType.TRAVEL_TIME ->
-                            (nearest.estimatedTravelMinutes ?: Int.MAX_VALUE) <=
-                                (reminder.triggerTravelTimeMinutes ?: 10)
+                            TriggerType.TRAVEL_TIME ->
+                                (nearest.estimatedTravelMinutes ?: Int.MAX_VALUE) <=
+                                    (reminder.triggerTravelTimeMinutes ?: 10)
+                        }
+                        val meetsSpeedRule = !reminder.requiresDrivingFast || isDrivingFast
+                        meetsTrigger && meetsSpeedRule
                     }
                 }
-                val suppressed = withinThreshold && brandReminders.all { reminder ->
+                val suppressed = eligibleReminders.isNotEmpty() && eligibleReminders.all { reminder ->
                     !BlockedTimeEvaluator.isReminderAllowedNow(
                         reminder = reminder,
                         blockedWindows = blockedWindows
@@ -64,11 +71,15 @@ class NearbyReminderEvaluator(
                 BrandReminderMatch(
                     brandName = sample.brandName,
                     brandQuery = sample.brandQuery,
-                    reminders = brandReminders,
+                    reminders = eligibleReminders,
                     nearestPlace = nearest,
-                    shouldNotifyNow = withinThreshold && !suppressed,
+                    shouldNotifyNow = eligibleReminders.isNotEmpty() && !suppressed,
                     suppressedByBlockedTime = suppressed
                 )
             }
+    }
+
+    private companion object {
+        const val DRIVING_SPEED_MPS = 8.94f
     }
 }

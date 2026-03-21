@@ -8,8 +8,10 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +45,8 @@ import com.pingplace.ui.onboarding.OnboardingScreen
 import com.pingplace.ui.onboarding.OnboardingViewModel
 import com.pingplace.ui.settings.SettingsScreen
 import com.pingplace.ui.settings.SettingsViewModel
+import com.pingplace.ui.theme.Ember
+import com.pingplace.ui.theme.MeadowGreen
 import com.pingplace.ui.theme.PingPlaceTheme
 
 private object PingPlaceRoutes {
@@ -124,6 +128,23 @@ fun PingPlaceApp(
                                         restoreState = true
                                     }
                                 },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = if (destination.route == PingPlaceRoutes.BLOCKED) {
+                                        MaterialTheme.colorScheme.onError
+                                    } else {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    },
+                                    selectedTextColor = if (destination.route == PingPlaceRoutes.BLOCKED) {
+                                        Ember
+                                    } else {
+                                        MeadowGreen
+                                    },
+                                    indicatorColor = if (destination.route == PingPlaceRoutes.BLOCKED) {
+                                        Ember
+                                    } else {
+                                        MeadowGreen
+                                    }
+                                ),
                                 icon = { Icon(destination.icon, contentDescription = destination.label) },
                                 label = { androidx.compose.material3.Text(destination.label) }
                             )
@@ -190,7 +211,10 @@ fun PingPlaceApp(
                 composable(PingPlaceRoutes.COMPLETED) {
                     val vm: CompletedViewModel = viewModel(
                         factory = viewModelFactory {
-                            CompletedViewModel(container.repository)
+                            CompletedViewModel(
+                                repository = container.repository,
+                                scheduler = container.monitorScheduler
+                            )
                         }
                     )
                     CompletedScreen(

@@ -100,6 +100,7 @@ class BrandDetailViewModel(
             uiState.value.reminders.filterNot { it.isCompleted }.forEach {
                 repository.snoozeReminder(it.id, until)
             }
+            scheduler.triggerImmediateRefresh()
         }
     }
 }

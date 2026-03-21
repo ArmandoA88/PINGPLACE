@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pingplace.model.TriggerType
 import com.pingplace.model.UnitsSystem
+import com.pingplace.ui.common.SelectionChip
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -51,9 +51,10 @@ fun SettingsScreen(
                 SettingsCard("Default trigger mode") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TriggerType.entries.forEach { trigger ->
-                            AssistChip(
+                            SelectionChip(
+                                label = trigger.name.lowercase().replace('_', ' '),
+                                selected = settings.defaultTriggerType == trigger,
                                 onClick = { viewModel.updateDefaultTrigger(trigger) },
-                                label = { Text(trigger.name.lowercase().replace('_', ' ')) }
                             )
                         }
                     }
@@ -63,9 +64,10 @@ fun SettingsScreen(
                 SettingsCard("Defaults") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(804, 1609, 3218, 8046).forEach {
-                            AssistChip(
+                            SelectionChip(
+                                label = "${it / 1609.0} mi",
+                                selected = settings.defaultDistanceMeters == it,
                                 onClick = { viewModel.updateDistance(it) },
-                                label = { Text("${it / 1609.0} mi") }
                             )
                         }
                     }
@@ -74,9 +76,10 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         listOf(5, 10, 15, 20).forEach {
-                            AssistChip(
+                            SelectionChip(
+                                label = "$it min",
+                                selected = settings.defaultTravelTimeMinutes == it,
                                 onClick = { viewModel.updateTravelTime(it) },
-                                label = { Text("$it min") }
                             )
                         }
                     }
@@ -85,13 +88,19 @@ fun SettingsScreen(
             item {
                 SettingsCard("Units and appearance") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        UnitsSystem.entries.forEach {
-                            AssistChip(
-                                onClick = { viewModel.updateUnits(it) },
-                                label = { Text(it.name) }
+                        UnitsSystem.entries.forEach { units ->
+                            SelectionChip(
+                                label = units.name,
+                                selected = settings.units == units,
+                                onClick = { viewModel.updateUnits(units) }
                             )
                         }
                     }
+                    SwitchRow(
+                        title = "Notifications enabled",
+                        checked = settings.notificationsEnabled,
+                        onCheckedChange = viewModel::updateNotificationsEnabled
+                    )
                     SwitchRow(
                         title = "Notification sound",
                         checked = settings.soundEnabled,
@@ -101,6 +110,20 @@ fun SettingsScreen(
                         title = "Dark mode",
                         checked = settings.darkModeEnabled,
                         onCheckedChange = viewModel::updateDarkMode
+                    )
+                }
+            }
+            item {
+                SettingsCard("Reminder behavior") {
+                    SwitchRow(
+                        title = "Background monitoring",
+                        checked = settings.backgroundLocationEnabled,
+                        onCheckedChange = viewModel::updateBackgroundLocationEnabled
+                    )
+                    SwitchRow(
+                        title = "Respect blocked times by default",
+                        checked = settings.respectBlockedTimesByDefault,
+                        onCheckedChange = viewModel::updateRespectBlockedTimesByDefault
                     )
                 }
             }

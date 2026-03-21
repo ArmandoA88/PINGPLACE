@@ -13,7 +13,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.location.LocationManagerCompat
+import androidx.lifecycle.lifecycleScope
+import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.ui.PingPlaceApp
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -23,13 +26,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         pendingBrandQuery = intent.getStringExtra(EXTRA_BRAND_QUERY)
+        val repository = (application as PingPlaceApplication).container.repository
 
         val notificationPermissionLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                updateSettings(repository) { it.copy(notificationsEnabled = granted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) }
+            }
         val fineLocationPermissionLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                if (granted) {
+                    (application as PingPlaceApplication).container.monitorScheduler.triggerImmediateRefresh()
+                }
+            }
         val backgroundLocationPermissionLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                updateSettings(repository) { it.copy(backgroundLocationEnabled = granted) }
+                if (granted) {
+                    (application as PingPlaceApplication).container.monitorScheduler.scheduleMonitoring()
+                    (application as PingPlaceApplication).container.monitorScheduler.triggerImmediateRefresh()
+                }
+            }
 
         setContent {
             PingPlaceApp(
@@ -63,6 +79,15 @@ class MainActivity : ComponentActivity() {
     private fun isLocationServicesEnabled(): Boolean {
         val manager = getSystemService(LocationManager::class.java)
         return LocationManagerCompat.isLocationEnabled(manager)
+    }
+
+    private fun updateSettings(
+        repository: PingPlaceRepository,
+        transform: (com.pingplace.data.local.entity.UserSettingsEntity) -> com.pingplace.data.local.entity.UserSettingsEntity
+    ) {
+        lifecycleScope.launch {
+            repository.updateSettings(transform)
+        }
     }
 
     companion object {

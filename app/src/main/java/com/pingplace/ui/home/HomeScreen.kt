@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.LocationOff
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,6 +38,7 @@ import com.pingplace.data.local.entity.ReminderEntity
 import com.pingplace.model.ReminderFilter
 import com.pingplace.model.TriggerType
 import com.pingplace.model.UnitsSystem
+import com.pingplace.ui.common.SelectionChip
 import com.pingplace.ui.common.formatTrigger
 import com.pingplace.ui.theme.PingPlaceTheme
 
@@ -112,9 +112,10 @@ fun HomeScreen(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ReminderFilter.entries.forEach { filter ->
-                        AssistChip(
+                        SelectionChip(
+                            selected = uiState.filter == filter,
                             onClick = { viewModel.onFilterSelected(filter) },
-                            label = { Text(filter.name.lowercase().replaceFirstChar { it.titlecase() }) }
+                            label = filter.name.lowercase().replaceFirstChar { it.titlecase() }
                         )
                     }
                 }
@@ -185,7 +186,7 @@ private fun BrandCard(
                     Text(group.summary)
                 }
                 if (group.suppressedCount > 0) {
-                    AssistChip(onClick = onOpen, label = { Text("Suppressed now") })
+                    SelectionChip(label = "Suppressed now", selected = true, onClick = onOpen)
                 }
             }
 
@@ -196,8 +197,8 @@ private fun BrandCard(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(onClick = onComplete, label = { Text("Complete all") })
-                AssistChip(onClick = onSnooze, label = { Text("Snooze 30 min") })
+                SelectionChip(label = "Complete all", selected = false, onClick = onComplete)
+                SelectionChip(label = "Snooze 30 min", selected = false, onClick = onSnooze)
             }
         }
     }

@@ -17,6 +17,7 @@ data class ReminderEntity(
     val triggerType: TriggerType,
     val triggerDistanceMeters: Int? = null,
     val triggerTravelTimeMinutes: Int? = null,
+    val requiresDrivingFast: Boolean = false,
     val checklistItems: List<String> = emptyList(),
     val isCompleted: Boolean = false,
     val isSnoozed: Boolean = false,

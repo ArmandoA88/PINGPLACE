@@ -41,6 +41,11 @@ class MonitorScheduler(
         )
     }
 
+    fun cancelMonitoring() {
+        workManager.cancelUniqueWork(IMMEDIATE_WORK_NAME)
+        workManager.cancelUniqueWork(MONITOR_WORK_NAME)
+    }
+
     companion object {
         const val MONITOR_WORK_NAME = "pingplace_monitor"
         const val IMMEDIATE_WORK_NAME = "pingplace_monitor_now"

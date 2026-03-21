@@ -24,6 +24,7 @@ data class AddReminderUiState(
     val triggerType: TriggerType = TriggerType.DISTANCE,
     val triggerDistanceMeters: Int = 1609,
     val triggerTravelTimeMinutes: Int = 10,
+    val requiresDrivingFast: Boolean = false,
     val checklistText: String = "",
     val priority: ReminderPriority = ReminderPriority.NORMAL,
     val repeatType: ReminderRepeatType = ReminderRepeatType.NONE,
@@ -71,6 +72,7 @@ class AddReminderViewModel(
     fun updateTriggerType(value: TriggerType) = _uiState.update { it.copy(triggerType = value) }
     fun updateDistance(value: Int) = _uiState.update { it.copy(triggerDistanceMeters = value) }
     fun updateTravelMinutes(value: Int) = _uiState.update { it.copy(triggerTravelTimeMinutes = value) }
+    fun updateRequiresDrivingFast(value: Boolean) = _uiState.update { it.copy(requiresDrivingFast = value) }
     fun updatePriority(value: ReminderPriority) = _uiState.update { it.copy(priority = value) }
     fun updateRepeatType(value: ReminderRepeatType) = _uiState.update { it.copy(repeatType = value) }
     fun toggleRepeatDay(day: Int) = _uiState.update { state ->
@@ -107,6 +109,7 @@ class AddReminderViewModel(
                     triggerType = state.triggerType,
                     triggerDistanceMeters = state.triggerDistanceMeters,
                     triggerTravelTimeMinutes = state.triggerTravelTimeMinutes,
+                    requiresDrivingFast = state.requiresDrivingFast,
                     checklistItems = state.checklistText.lines().filter { it.isNotBlank() },
                     priority = state.priority,
                     dueDateEpochMillis = state.dueDateEpochMillis,

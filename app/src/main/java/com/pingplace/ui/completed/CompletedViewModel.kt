@@ -2,6 +2,7 @@ package com.pingplace.ui.completed
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pingplace.background.MonitorScheduler
 import com.pingplace.data.local.entity.ReminderEntity
 import com.pingplace.data.repository.PingPlaceRepository
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,7 +16,8 @@ data class CompletedUiState(
 )
 
 class CompletedViewModel(
-    private val repository: PingPlaceRepository
+    private val repository: PingPlaceRepository,
+    private val scheduler: MonitorScheduler
 ) : ViewModel() {
 
     val uiState: StateFlow<CompletedUiState> = repository.observeCompletedReminders()
@@ -25,6 +27,7 @@ class CompletedViewModel(
     fun restoreReminder(id: Long) {
         viewModelScope.launch {
             repository.setReminderCompleted(id, false)
+            scheduler.triggerImmediateRefresh()
         }
     }
 }

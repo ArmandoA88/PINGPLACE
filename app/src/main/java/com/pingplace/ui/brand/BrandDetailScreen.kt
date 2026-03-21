@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pingplace.ui.common.SelectionChip
 import com.pingplace.ui.common.formatDistance
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,9 +54,9 @@ fun BrandDetailScreen(
                         Text("All reminders", style = MaterialTheme.typography.titleLarge)
                         uiState.reminders.forEach { Text("- ${it.title}") }
                         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AssistChip(onClick = viewModel::completeAll, label = { Text("Complete all") })
-                            AssistChip(onClick = viewModel::snoozeAll, label = { Text("Snooze 30 min") })
-                            AssistChip(onClick = onBack, label = { Text("Back") })
+                            SelectionChip(label = "Complete all", selected = false, onClick = viewModel::completeAll)
+                            SelectionChip(label = "Snooze 30 min", selected = false, onClick = viewModel::snoozeAll)
+                            SelectionChip(label = "Back", selected = false, onClick = onBack)
                         }
                     }
                 }
@@ -70,6 +70,13 @@ fun BrandDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text("Nearby matches", style = MaterialTheme.typography.titleLarge)
+                        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SelectionChip(
+                                label = "Refresh nearby",
+                                selected = false,
+                                onClick = viewModel::refreshNearbyPlaces
+                            )
+                        }
                         when {
                             uiState.isLoadingPlaces -> Text("Checking nearby places...")
                             uiState.placeError != null -> Text(uiState.placeError!!)

@@ -20,6 +20,7 @@ class ReminderRefreshWorker(
 
         val container = (applicationContext as PingPlaceApplication).container
         val repository = container.repository
+        val settings = repository.getUserSettings()
         repository.clearExpiredSnoozes(System.currentTimeMillis())
         val reminders = repository.getReadyToEvaluateReminders()
             .filterNot { it.isCompleted }
@@ -51,8 +52,11 @@ class ReminderRefreshWorker(
             if (match.shouldNotifyNow) {
                 val alreadyActive = previous?.isActive == true &&
                     previous.placeId == match.nearestPlace?.id
-                if (!alreadyActive) {
-                    container.notificationHelper.showBrandReminder(match)
+                if (!alreadyActive && settings.notificationsEnabled) {
+                    container.notificationHelper.showBrandReminder(
+                        match = match,
+                        soundEnabled = settings.soundEnabled
+                    )
                 }
                 repository.saveVisitState(
                     BrandVisitStateEntity(

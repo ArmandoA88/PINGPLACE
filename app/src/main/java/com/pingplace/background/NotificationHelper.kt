@@ -32,7 +32,7 @@ class NotificationHelper(
         )
     }
 
-    fun showBrandReminder(match: BrandReminderMatch) {
+    fun showBrandReminder(match: BrandReminderMatch, soundEnabled: Boolean = true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
                 context,
@@ -71,6 +71,7 @@ class NotificationHelper(
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
             .setContentIntent(pendingIntent)
+            .setSilent(!soundEnabled)
             .setAutoCancel(true)
             .build()
 

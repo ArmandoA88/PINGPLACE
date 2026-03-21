@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pingplace.ui.add.minutesLabel
+import com.pingplace.ui.common.BlockedSelectionChip
 import com.pingplace.ui.theme.PingPlaceTheme
 
 private val blockedHourOptions = listOf(0, 360, 450, 510, 720, 990, 1260)
@@ -77,27 +77,30 @@ fun BlockedTimesScreen(
                         )
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             blockedDays.forEachIndexed { index, day ->
-                                AssistChip(
+                                BlockedSelectionChip(
+                                    selected = selectedDay == index + 1,
                                     onClick = { selectedDay = index + 1 },
-                                    label = { Text(day) }
+                                    label = day
                                 )
                             }
                         }
                         Text("Start")
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             blockedHourOptions.forEach { option ->
-                                AssistChip(
+                                BlockedSelectionChip(
+                                    selected = selectedStart == option,
                                     onClick = { selectedStart = option },
-                                    label = { Text(minutesLabel(option)) }
+                                    label = minutesLabel(option)
                                 )
                             }
                         }
                         Text("End")
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             blockedHourOptions.forEach { option ->
-                                AssistChip(
+                                BlockedSelectionChip(
+                                    selected = selectedEnd == option,
                                     onClick = { selectedEnd = option },
-                                    label = { Text(minutesLabel(option)) }
+                                    label = minutesLabel(option)
                                 )
                             }
                         }
@@ -122,9 +125,10 @@ fun BlockedTimesScreen(
                     ) {
                         Text(window.label.ifBlank { "Blocked time" }, style = MaterialTheme.typography.titleLarge)
                         Text("${blockedDays[window.dayOfWeek - 1]} - ${minutesLabel(window.startMinutes)} to ${minutesLabel(window.endMinutes)}")
-                        AssistChip(
+                        BlockedSelectionChip(
                             onClick = { viewModel.deleteWindow(window.id) },
-                            label = { Text("Delete") }
+                            selected = false,
+                            label = "Delete"
                         )
                     }
                 }

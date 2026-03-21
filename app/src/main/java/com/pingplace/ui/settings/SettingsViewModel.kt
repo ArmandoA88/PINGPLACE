@@ -54,6 +54,30 @@ class SettingsViewModel(
         }
     }
 
+    fun updateNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.updateSettings { it.copy(notificationsEnabled = enabled) }
+        }
+    }
+
+    fun updateBackgroundLocationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.updateSettings { it.copy(backgroundLocationEnabled = enabled) }
+            if (enabled) {
+                scheduler.scheduleMonitoring()
+                scheduler.triggerImmediateRefresh()
+            } else {
+                scheduler.cancelMonitoring()
+            }
+        }
+    }
+
+    fun updateRespectBlockedTimesByDefault(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.updateSettings { it.copy(respectBlockedTimesByDefault = enabled) }
+        }
+    }
+
     fun updateDarkMode(enabled: Boolean) {
         viewModelScope.launch {
             repository.updateSettings { it.copy(darkModeEnabled = enabled) }
@@ -61,6 +85,7 @@ class SettingsViewModel(
     }
 
     fun triggerTestNotification() {
+        if (!uiState.value.notificationsEnabled) return
         notificationHelper.showBrandReminder(
             BrandReminderMatch(
                 brandName = "Whole Foods",
@@ -80,7 +105,8 @@ class SettingsViewModel(
                 nearestPlace = null,
                 shouldNotifyNow = true,
                 suppressedByBlockedTime = false
-            )
+            ),
+            soundEnabled = uiState.value.soundEnabled
         )
     }
 

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +30,7 @@ import com.pingplace.model.BrandCatalog
 import com.pingplace.model.ReminderPriority
 import com.pingplace.model.ReminderRepeatType
 import com.pingplace.model.TriggerType
+import com.pingplace.ui.common.SelectionChip
 import com.pingplace.ui.theme.PingPlaceTheme
 
 private val distanceOptions = listOf(150, 500, 804, 1609, 3218, 8046)
@@ -85,9 +85,10 @@ fun AddReminderScreen(
                 SectionCard(title = "Trigger") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TriggerType.entries.forEach { type ->
-                            AssistChip(
+                            SelectionChip(
+                                selected = uiState.triggerType == type,
                                 onClick = { viewModel.updateTriggerType(type) },
-                                label = { Text(if (type == TriggerType.DISTANCE) "Distance" else "Travel time") }
+                                label = if (type == TriggerType.DISTANCE) "Distance" else "Travel time"
                             )
                         }
                     }
@@ -98,27 +99,40 @@ fun AddReminderScreen(
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (uiState.triggerType == TriggerType.DISTANCE) {
                             distanceOptions.forEach { meters ->
-                                AssistChip(
+                                SelectionChip(
+                                    selected = uiState.triggerDistanceMeters == meters,
                                     onClick = { viewModel.updateDistance(meters) },
-                                    label = {
-                                        Text(
-                                            if (meters < 305) {
-                                                "${(meters * 3.28084).toInt()} ft"
-                                            } else {
-                                                "%.1f mi".format(meters / 1609.0)
-                                            }
-                                        )
+                                    label = if (meters < 305) {
+                                        "${(meters * 3.28084).toInt()} ft"
+                                    } else {
+                                        "%.1f mi".format(meters / 1609.0)
                                     }
                                 )
                             }
                         } else {
                             timeOptions.forEach { minutes ->
-                                AssistChip(
+                                SelectionChip(
+                                    selected = uiState.triggerTravelTimeMinutes == minutes,
                                     onClick = { viewModel.updateTravelMinutes(minutes) },
-                                    label = { Text("$minutes min") }
+                                    label = "$minutes min"
                                 )
                             }
                         }
+                    }
+                    FlowRow(
+                        modifier = Modifier.padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SelectionChip(
+                            label = "Any movement",
+                            selected = !uiState.requiresDrivingFast,
+                            onClick = { viewModel.updateRequiresDrivingFast(false) }
+                        )
+                        SelectionChip(
+                            label = "Driving only",
+                            selected = uiState.requiresDrivingFast,
+                            onClick = { viewModel.updateRequiresDrivingFast(true) }
+                        )
                     }
                 }
             }
@@ -144,7 +158,11 @@ fun AddReminderScreen(
                 SectionCard(title = "Priority and repeat") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ReminderPriority.entries.forEach { priority ->
-                            AssistChip(onClick = { viewModel.updatePriority(priority) }, label = { Text(priority.name) })
+                            SelectionChip(
+                                label = priority.name,
+                                selected = uiState.priority == priority,
+                                onClick = { viewModel.updatePriority(priority) }
+                            )
                         }
                     }
                     FlowRow(
@@ -152,7 +170,11 @@ fun AddReminderScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         ReminderRepeatType.entries.forEach { repeat ->
-                            AssistChip(onClick = { viewModel.updateRepeatType(repeat) }, label = { Text(repeat.name) })
+                            SelectionChip(
+                                label = repeat.name,
+                                selected = uiState.repeatType == repeat,
+                                onClick = { viewModel.updateRepeatType(repeat) }
+                            )
                         }
                     }
                     if (uiState.repeatType == ReminderRepeatType.WEEKLY) {
@@ -161,9 +183,10 @@ fun AddReminderScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             weekdayLabels.forEachIndexed { index, label ->
-                                AssistChip(
+                                SelectionChip(
+                                    selected = index + 1 in uiState.repeatDays,
                                     onClick = { viewModel.toggleRepeatDay(index + 1) },
-                                    label = { Text(label) }
+                                    label = label
                                 )
                             }
                         }
@@ -173,14 +196,23 @@ fun AddReminderScreen(
             item {
                 SectionCard(title = "Due date") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = { viewModel.updateDueDate(null) }, label = { Text("No due date") })
-                        AssistChip(
-                            onClick = { viewModel.updateDueDate(System.currentTimeMillis()) },
-                            label = { Text("Today") }
+                        val dueDate = uiState.dueDateEpochMillis
+                        SelectionChip(
+                            label = "No due date",
+                            selected = dueDate == null,
+                            onClick = { viewModel.updateDueDate(null) }
                         )
-                        AssistChip(
+                        SelectionChip(
+                            label = "Today",
+                            selected = dueDate != null &&
+                                dueDate <= System.currentTimeMillis() + 1_000,
+                            onClick = { viewModel.updateDueDate(System.currentTimeMillis()) },
+                        )
+                        SelectionChip(
+                            label = "Tomorrow",
+                            selected = dueDate != null &&
+                                dueDate > System.currentTimeMillis() + 1_000,
                             onClick = { viewModel.updateDueDate(System.currentTimeMillis() + 86_400_000) },
-                            label = { Text("Tomorrow") }
                         )
                     }
                 }
@@ -189,9 +221,10 @@ fun AddReminderScreen(
                 SectionCard(title = "Blocked time behavior") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         BlockedTimeBehavior.entries.forEach { behavior ->
-                            AssistChip(
+                            SelectionChip(
+                                selected = uiState.blockedTimeBehavior == behavior,
                                 onClick = { viewModel.updateBlockedBehavior(behavior) },
-                                label = { Text(behavior.name.lowercase().replace('_', ' ')) }
+                                label = behavior.name.lowercase().replace('_', ' ')
                             )
                         }
                     }
@@ -199,27 +232,30 @@ fun AddReminderScreen(
                         Text("Allowed days", modifier = Modifier.padding(top = 12.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             weekdayLabels.forEachIndexed { index, label ->
-                                AssistChip(
+                                SelectionChip(
+                                    selected = index + 1 in uiState.allowedDays,
                                     onClick = { viewModel.toggleAllowedDay(index + 1) },
-                                    label = { Text(label) }
+                                    label = label
                                 )
                             }
                         }
                         Text("Allowed start", modifier = Modifier.padding(top = 12.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             hourOptions.forEach { option ->
-                                AssistChip(
+                                SelectionChip(
+                                    selected = uiState.allowedStartMinutes == option,
                                     onClick = { viewModel.updateAllowedStart(option) },
-                                    label = { Text(minutesLabel(option)) }
+                                    label = minutesLabel(option)
                                 )
                             }
                         }
                         Text("Allowed end", modifier = Modifier.padding(top = 12.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             hourOptions.forEach { option ->
-                                AssistChip(
+                                SelectionChip(
+                                    selected = uiState.allowedEndMinutes == option,
                                     onClick = { viewModel.updateAllowedEnd(option) },
-                                    label = { Text(minutesLabel(option)) }
+                                    label = minutesLabel(option)
                                 )
                             }
                         }
@@ -251,9 +287,10 @@ private fun BrandSection(
     SectionCard(title = "Brand or place type") {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BrandCatalog.defaults.forEach { brand ->
-                AssistChip(
+                SelectionChip(
+                    selected = selectedBrand == brand.name,
                     onClick = { onBrandSelected(brand.name, brand.query) },
-                    label = { Text(brand.name) }
+                    label = brand.name
                 )
             }
         }

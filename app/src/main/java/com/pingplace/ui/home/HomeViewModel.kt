@@ -107,6 +107,7 @@ class HomeViewModel(
             group.reminders.filterNot { it.isCompleted }.forEach { reminder ->
                 repository.snoozeReminder(reminder.id, until)
             }
+            scheduler.triggerImmediateRefresh()
         }
     }
 }
