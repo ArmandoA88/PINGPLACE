@@ -1,0 +1,53 @@
+{
+  "region": {
+    "id": "dallas-city",
+    "displayName": "Dallas",
+    "updatedAtEpochMillis": 1770000000000,
+    "minLatitude": 32.7000,
+    "maxLatitude": 32.9400,
+    "minLongitude": -96.9900,
+    "maxLongitude": -96.6800
+  },
+  "places": [
+    {
+      "id": "dallas-wf-1",
+      "name": "Whole Foods Market",
+      "brand": "Whole Foods",
+      "category": "grocery",
+      "address": "4100 Lomo Alto Dr, Dallas, TX",
+      "latitude": 32.8357,
+      "longitude": -96.8103,
+      "searchText": "whole foods grocery amazon return market"
+    },
+    {
+      "id": "dallas-ups-1",
+      "name": "The UPS Store",
+      "brand": "UPS Store",
+      "category": "shipping",
+      "address": "5331 E Mockingbird Ln, Dallas, TX",
+      "latitude": 32.8364,
+      "longitude": -96.7705,
+      "searchText": "ups store shipping package drop off return"
+    },
+    {
+      "id": "dallas-target-1",
+      "name": "Target",
+      "brand": "Target",
+      "category": "retail",
+      "address": "2417 N Haskell Ave, Dallas, TX",
+      "latitude": 32.7997,
+      "longitude": -96.7877,
+      "searchText": "target retail household shopping"
+    },
+    {
+      "id": "dallas-cvs-1",
+      "name": "CVS Pharmacy",
+      "brand": "CVS",
+      "category": "pharmacy",
+      "address": "1411 Main St, Dallas, TX",
+      "latitude": 32.7810,
+      "longitude": -96.7982,
+      "searchText": "cvs pharmacy medicine health"
+    }
+  ]
+}

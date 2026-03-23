@@ -7,6 +7,7 @@ import com.pingplace.data.local.entity.ReminderEntity
 import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.domain.BlockedTimeEvaluator
 import com.pingplace.model.ReminderFilter
+import com.pingplace.model.ReminderPriority
 import com.pingplace.model.UnitsSystem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,18 +49,19 @@ class HomeViewModel(
         controls
     ) { reminders, blockedWindows, settings, current ->
         val grouped = reminders.groupBy { it.brandQuery }.values.map { brandReminders ->
-            val sample = brandReminders.first()
-            val active = brandReminders.count { !it.isCompleted && !it.isSnoozed }
-            val snoozed = brandReminders.count { it.isSnoozed }
-            val completed = brandReminders.count { it.isCompleted }
-            val suppressed = brandReminders.count {
+            val ordered = brandReminders.sortedWith(reminderComparator())
+            val sample = ordered.first()
+            val active = ordered.count { !it.isCompleted && !it.isSnoozed }
+            val snoozed = ordered.count { it.isSnoozed }
+            val completed = ordered.count { it.isCompleted }
+            val suppressed = ordered.count {
                 !it.isCompleted && !it.isSnoozed &&
                     !BlockedTimeEvaluator.isReminderAllowedNow(it, blockedWindows)
             }
             BrandGroupUiModel(
                 brandName = sample.brandName,
                 brandQuery = sample.brandQuery,
-                reminders = brandReminders,
+                reminders = ordered,
                 activeCount = active,
                 snoozedCount = snoozed,
                 completedCount = completed,
@@ -109,5 +111,39 @@ class HomeViewModel(
             }
             scheduler.triggerImmediateRefresh()
         }
+    }
+
+    fun completeReminder(id: Long) {
+        viewModelScope.launch {
+            repository.setReminderCompleted(id, true)
+            scheduler.triggerImmediateRefresh()
+        }
+    }
+
+    fun snoozeReminder(id: Long) {
+        viewModelScope.launch {
+            repository.snoozeReminder(id, System.currentTimeMillis() + 30 * 60 * 1000)
+            scheduler.triggerImmediateRefresh()
+        }
+    }
+
+    fun deleteReminder(id: Long) {
+        viewModelScope.launch {
+            repository.deleteReminder(id)
+            scheduler.triggerImmediateRefresh()
+        }
+    }
+
+    private fun reminderComparator() = compareBy<ReminderEntity>(
+        { it.isCompleted },
+        { it.isSnoozed },
+        { it.dueDateEpochMillis ?: Long.MAX_VALUE },
+        { priorityRank(it.priority ?: ReminderPriority.NORMAL) }
+    ).thenByDescending { it.updatedAtEpochMillis }
+
+    private fun priorityRank(priority: ReminderPriority): Int = when (priority) {
+        ReminderPriority.HIGH -> 0
+        ReminderPriority.NORMAL -> 1
+        ReminderPriority.LOW -> 2
     }
 }

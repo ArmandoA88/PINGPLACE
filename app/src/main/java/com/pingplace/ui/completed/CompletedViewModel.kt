@@ -30,4 +30,11 @@ class CompletedViewModel(
             scheduler.triggerImmediateRefresh()
         }
     }
+
+    fun deleteReminder(id: Long) {
+        viewModelScope.launch {
+            repository.deleteReminder(id)
+            scheduler.triggerImmediateRefresh()
+        }
+    }
 }

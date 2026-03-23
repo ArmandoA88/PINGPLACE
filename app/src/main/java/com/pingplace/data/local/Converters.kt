@@ -2,6 +2,7 @@ package com.pingplace.data.local
 
 import androidx.room.TypeConverter
 import com.pingplace.model.BlockedTimeBehavior
+import com.pingplace.model.PlaceSearchMode
 import com.pingplace.model.ReminderPriority
 import com.pingplace.model.ReminderRepeatType
 import com.pingplace.model.TriggerType
@@ -39,6 +40,12 @@ class Converters {
 
     @TypeConverter
     fun toUnits(value: String?): UnitsSystem? = value?.let(UnitsSystem::valueOf)
+
+    @TypeConverter
+    fun fromPlaceSearchMode(value: PlaceSearchMode?): String? = value?.name
+
+    @TypeConverter
+    fun toPlaceSearchMode(value: String?): PlaceSearchMode? = value?.let(PlaceSearchMode::valueOf)
 
     @TypeConverter
     fun fromStringList(value: List<String>?): String? = value?.joinToString("\n")

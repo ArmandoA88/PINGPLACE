@@ -36,3 +36,11 @@ fun formatDueDate(epochMillis: Long?): String? {
         Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
     )
 }
+
+fun formatDateTime(epochMillis: Long?): String? {
+    if (epochMillis == null) return null
+    val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")
+    return formatter.format(
+        Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDateTime()
+    )
+}

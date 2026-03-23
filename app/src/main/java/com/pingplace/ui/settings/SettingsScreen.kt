@@ -12,8 +12,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -23,17 +25,41 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pingplace.model.PlaceSearchMode
 import com.pingplace.model.TriggerType
 import com.pingplace.model.UnitsSystem
+import com.pingplace.offline.OfflinePackDescriptor
+import com.pingplace.offline.OfflinePackKind
+import com.pingplace.ui.common.ReliabilityStatus
 import com.pingplace.ui.common.SelectionChip
+import com.pingplace.ui.common.formatDateTime
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     innerPadding: PaddingValues,
-    viewModel: SettingsViewModel
+    viewModel: SettingsViewModel,
+    reliabilityStatus: ReliabilityStatus,
+    onRequestNotifications: () -> Unit,
+    onRequestFineLocation: () -> Unit,
+    onRequestBackgroundLocation: () -> Unit,
+    onOpenLocationSettings: () -> Unit,
+    onOpenAppSettings: () -> Unit,
+    onOpenBatterySettings: () -> Unit
 ) {
     val settings by viewModel.uiState.collectAsStateWithLifecycle()
+    val installedRegions by viewModel.installedRegions.collectAsStateWithLifecycle()
+    val offlineState by viewModel.offlineUiState.collectAsStateWithLifecycle()
+    val installedIds = installedRegions.map { it.id }.toSet()
+    val catalogById = offlineState.catalog.associateBy { it.id }
+    val filteredPacks = offlineState.catalog
+        .filter { offlineState.selectedKind == null || it.kind == offlineState.selectedKind }
+        .filter {
+            offlineState.searchQuery.isBlank() ||
+                it.displayName.contains(offlineState.searchQuery, ignoreCase = true) ||
+                it.subtitle.contains(offlineState.searchQuery, ignoreCase = true) ||
+                it.region.contains(offlineState.searchQuery, ignoreCase = true)
+        }
 
     Scaffold(
         modifier = Modifier.padding(innerPadding),
@@ -114,6 +140,23 @@ fun SettingsScreen(
                 }
             }
             item {
+                SettingsCard("Store lookup source") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PlaceSearchMode.entries.forEach { mode ->
+                            SelectionChip(
+                                label = mode.name.lowercase().replace('_', ' '),
+                                selected = settings.placeSearchMode == mode,
+                                onClick = { viewModel.updatePlaceSearchMode(mode) }
+                            )
+                        }
+                    }
+                    Text(
+                        "Hybrid uses offline packs first, then live lookup. Offline only never calls the Places API.",
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                }
+            }
+            item {
                 SettingsCard("Reminder behavior") {
                     SwitchRow(
                         title = "Background monitoring",
@@ -125,6 +168,147 @@ fun SettingsScreen(
                         checked = settings.respectBlockedTimesByDefault,
                         onCheckedChange = viewModel::updateRespectBlockedTimesByDefault
                     )
+                }
+            }
+            item {
+                SettingsCard("Reliability setup") {
+                    Text("Nearby reminders work best when all of these are turned on.")
+                    FlowRow(
+                        modifier = Modifier.padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ReliabilityChip("Location services", reliabilityStatus.locationServicesEnabled)
+                        ReliabilityChip("Precise location", reliabilityStatus.fineLocationGranted)
+                        ReliabilityChip("Background location", reliabilityStatus.backgroundLocationGranted)
+                        ReliabilityChip("Notifications", reliabilityStatus.notificationsGranted)
+                        ReliabilityChip("Battery unrestricted", reliabilityStatus.batteryOptimizationDisabled)
+                    }
+                    if (reliabilityStatus.needsAttention) {
+                        Text(
+                            "If any of these are off, reminders may not fire while you are near a store.",
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                    }
+                    FlowRow(
+                        modifier = Modifier.padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(onClick = onRequestNotifications) { Text("Allow alerts") }
+                        Button(onClick = onRequestFineLocation) { Text("Allow location") }
+                        Button(onClick = onRequestBackgroundLocation) { Text("Allow background") }
+                    }
+                    FlowRow(
+                        modifier = Modifier.padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(onClick = onOpenLocationSettings) { Text("Location settings") }
+                        Button(onClick = onOpenAppSettings) { Text("App settings") }
+                        Button(onClick = onOpenBatterySettings) { Text("Battery settings") }
+                    }
+                }
+            }
+            item {
+                SettingsCard("Offline region packs") {
+                    Text("Browse the map catalog, search by city or region, and install what you need.")
+                    offlineState.statusMessage?.let {
+                        Text(
+                            text = it,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                    }
+                    OutlinedTextField(
+                        value = offlineState.searchQuery,
+                        onValueChange = viewModel::updateOfflineSearchQuery,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        label = { Text("Search city or area") }
+                    )
+                    FlowRow(
+                        modifier = Modifier.padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SelectionChip(
+                            label = "All",
+                            selected = offlineState.selectedKind == null,
+                            onClick = { viewModel.updateOfflineKindFilter(null) }
+                        )
+                        OfflinePackKind.entries.forEach { kind ->
+                            SelectionChip(
+                                label = kind.name.lowercase().replaceFirstChar { it.titlecase() },
+                                selected = offlineState.selectedKind == kind,
+                                onClick = { viewModel.updateOfflineKindFilter(kind) }
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = viewModel::refreshOfflineCatalog,
+                        enabled = !offlineState.isLoadingCatalog,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    ) {
+                        Text(if (offlineState.isLoadingCatalog) "Refreshing..." else "Refresh catalog")
+                    }
+                    if (offlineState.isLoadingCatalog) {
+                        CircularProgressIndicator(modifier = Modifier.padding(top = 12.dp))
+                    }
+                    PackList(
+                        packs = filteredPacks,
+                        installedIds = installedIds,
+                        isImporting = offlineState.isImporting,
+                        activePackId = offlineState.activePackId,
+                        onInstall = viewModel::installBundledPack
+                    )
+                    if (filteredPacks.isEmpty()) {
+                        Text("No map packs match the current filter.", modifier = Modifier.padding(top = 12.dp))
+                    }
+                    Text(
+                        "Downloaded maps",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                    if (installedRegions.isEmpty()) {
+                        Text("No maps downloaded yet.", modifier = Modifier.padding(top = 12.dp))
+                    } else {
+                        installedRegions.forEach { region ->
+                            val descriptor = catalogById[region.id]
+                            val isRefreshing = offlineState.isImporting && offlineState.activePackId == region.id
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                                shape = RoundedCornerShape(18.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(region.displayName, style = MaterialTheme.typography.titleMedium)
+                                    Text("${region.placeCount} places")
+                                    formatDateTime(region.updatedAtEpochMillis ?: region.downloadedAtEpochMillis)?.let {
+                                        Text("Last synced: $it")
+                                    }
+                                    descriptor?.region?.let { Text(it) }
+                                    Button(
+                                        onClick = { viewModel.refreshInstalledPack(region.id) },
+                                        enabled = descriptor != null && !offlineState.isImporting,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(if (isRefreshing) "Updating stores..." else "Update stores")
+                                    }
+                                    Button(
+                                        onClick = { viewModel.removeOfflinePack(region.id) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Remove map")
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             item {
@@ -146,6 +330,49 @@ fun SettingsScreen(
                     ) {
                         Text("Test reminder")
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PackList(
+    packs: List<OfflinePackDescriptor>,
+    installedIds: Set<String>,
+    isImporting: Boolean,
+    activePackId: String?,
+    onInstall: (OfflinePackDescriptor) -> Unit
+) {
+    packs.forEach { pack ->
+        val isDownloading = isImporting && activePackId == pack.id
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(pack.displayName, style = MaterialTheme.typography.titleMedium)
+                Text(pack.region)
+                Text(pack.subtitle)
+                Button(
+                    onClick = { onInstall(pack) },
+                    enabled = !isImporting && pack.id !in installedIds,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        when {
+                            pack.id in installedIds -> "Installed"
+                            isDownloading -> "Downloading..."
+                            else -> "Download map"
+                        }
+                    )
                 }
             }
         }
@@ -183,4 +410,13 @@ private fun SwitchRow(
         Text(title)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
+}
+
+@Composable
+private fun ReliabilityChip(label: String, enabled: Boolean) {
+    SelectionChip(
+        selected = enabled,
+        onClick = {},
+        label = "$label: ${if (enabled) "On" else "Off"}"
+    )
 }

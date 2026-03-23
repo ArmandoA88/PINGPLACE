@@ -6,9 +6,12 @@ import com.pingplace.background.MonitorScheduler
 import com.pingplace.data.local.entity.ReminderEntity
 import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.location.DeviceLocationClient
+import com.pingplace.location.GooglePlacesSearchProvider
 import com.pingplace.location.NearbyPlace
 import com.pingplace.location.NearbyPlaceSearchProvider
+import com.pingplace.model.ReminderPriority
 import com.pingplace.model.UnitsSystem
+import com.pingplace.offline.OfflinePlaceSearchProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -42,7 +45,20 @@ class BrandDetailViewModel(
     ) { reminders, settings, places ->
         places.copy(
             brandName = reminders.firstOrNull()?.brandName ?: brandQuery,
-            reminders = reminders,
+            reminders = reminders.sortedWith(
+                compareBy<ReminderEntity>(
+                    { it.isCompleted },
+                    { it.isSnoozed },
+                    { it.dueDateEpochMillis ?: Long.MAX_VALUE },
+                    {
+                        when (it.priority ?: ReminderPriority.NORMAL) {
+                            ReminderPriority.HIGH -> 0
+                            ReminderPriority.NORMAL -> 1
+                            ReminderPriority.LOW -> 2
+                        }
+                    }
+                ).thenByDescending { it.updatedAtEpochMillis }
+            ),
             units = settings.units
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BrandDetailUiState())
@@ -76,9 +92,21 @@ class BrandDetailViewModel(
                     )
                 },
                 onFailure = {
+                    val message = when (it) {
+                        is GooglePlacesSearchProvider.MissingPlacesApiKeyException ->
+                            "Nearby places need a valid Places API key in BuildConfig."
+
+                        is GooglePlacesSearchProvider.PlacesRequestFailedException ->
+                            "Nearby lookup failed with Places status ${it.code}."
+
+                        is OfflinePlaceSearchProvider.OfflineCoverageMissingException ->
+                            "No offline pack is installed for this area."
+
+                        else -> "Nearby places could not be loaded right now."
+                    }
                     placeState.value.copy(
                         isLoadingPlaces = false,
-                        placeError = "Nearby places need a valid Places API key in BuildConfig."
+                        placeError = message
                     )
                 }
             )
@@ -100,6 +128,27 @@ class BrandDetailViewModel(
             uiState.value.reminders.filterNot { it.isCompleted }.forEach {
                 repository.snoozeReminder(it.id, until)
             }
+            scheduler.triggerImmediateRefresh()
+        }
+    }
+
+    fun completeReminder(id: Long) {
+        viewModelScope.launch {
+            repository.setReminderCompleted(id, true)
+            scheduler.triggerImmediateRefresh()
+        }
+    }
+
+    fun snoozeReminder(id: Long) {
+        viewModelScope.launch {
+            repository.snoozeReminder(id, System.currentTimeMillis() + 30 * 60 * 1000)
+            scheduler.triggerImmediateRefresh()
+        }
+    }
+
+    fun deleteReminder(id: Long) {
+        viewModelScope.launch {
+            repository.deleteReminder(id)
             scheduler.triggerImmediateRefresh()
         }
     }

@@ -26,14 +26,23 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders WHERE brandQuery = :brandQuery ORDER BY updatedAtEpochMillis DESC")
     fun observeByBrand(brandQuery: String): Flow<List<ReminderEntity>>
 
+    @Query("SELECT * FROM reminders WHERE id = :id")
+    fun observeById(id: Long): Flow<ReminderEntity?>
+
     @Query("SELECT * FROM reminders WHERE isCompleted = 0 AND isSnoozed = 0")
     suspend fun getReadyToEvaluate(): List<ReminderEntity>
+
+    @Query("SELECT * FROM reminders WHERE id = :id")
+    suspend fun getById(id: Long): ReminderEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(reminder: ReminderEntity): Long
 
     @Update
     suspend fun update(reminder: ReminderEntity)
+
+    @Query("DELETE FROM reminders WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
     @Query("UPDATE reminders SET isCompleted = :isCompleted, updatedAtEpochMillis = :updatedAt WHERE id = :id")
     suspend fun setCompleted(id: Long, isCompleted: Boolean, updatedAt: Long)

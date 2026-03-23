@@ -1,0 +1,63 @@
+{
+  "region": {
+    "id": "dfw-area",
+    "displayName": "Dallas-Fort Worth Area",
+    "updatedAtEpochMillis": 1770000000000,
+    "minLatitude": 32.5500,
+    "maxLatitude": 33.1800,
+    "minLongitude": -97.5500,
+    "maxLongitude": -96.4200
+  },
+  "places": [
+    {
+      "id": "dfw-costco-1",
+      "name": "Costco Wholesale",
+      "brand": "Costco",
+      "category": "warehouse",
+      "address": "8055 Churchill Way, Dallas, TX",
+      "latitude": 32.9506,
+      "longitude": -96.7700,
+      "searchText": "costco warehouse grocery shopping batteries"
+    },
+    {
+      "id": "dfw-whole-foods-1",
+      "name": "Whole Foods Market",
+      "brand": "Whole Foods",
+      "category": "grocery",
+      "address": "2201 Preston Rd, Plano, TX",
+      "latitude": 33.0299,
+      "longitude": -96.7901,
+      "searchText": "whole foods grocery amazon return market"
+    },
+    {
+      "id": "dfw-ups-1",
+      "name": "The UPS Store",
+      "brand": "UPS Store",
+      "category": "shipping",
+      "address": "5810 Long Prairie Rd, Flower Mound, TX",
+      "latitude": 33.0405,
+      "longitude": -97.0706,
+      "searchText": "ups store shipping package drop off return"
+    },
+    {
+      "id": "dfw-target-1",
+      "name": "Target",
+      "brand": "Target",
+      "category": "retail",
+      "address": "301 Carroll St, Fort Worth, TX",
+      "latitude": 32.7474,
+      "longitude": -97.3494,
+      "searchText": "target retail household shopping"
+    },
+    {
+      "id": "dfw-walmart-1",
+      "name": "Walmart Supercenter",
+      "brand": "Walmart",
+      "category": "retail",
+      "address": "200 US-80, Forney, TX",
+      "latitude": 32.7452,
+      "longitude": -96.4526,
+      "searchText": "walmart supercenter retail grocery household"
+    }
+  ]
+}

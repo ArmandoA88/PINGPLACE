@@ -6,6 +6,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
@@ -22,7 +24,10 @@ class BrandGeofenceManager(
 
     @SuppressLint("MissingPermission")
     fun registerPlaces(places: List<NearbyPlace>) {
-        if (places.isEmpty() || !hasLocationPermission()) return
+        if (!hasLocationPermission()) {
+            clear()
+            return
+        }
 
         val geofences = places.distinctBy { it.id }.take(20).map { place ->
             Geofence.Builder()
@@ -37,15 +42,22 @@ class BrandGeofenceManager(
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .build()
         }
-        if (geofences.isEmpty()) return
+        if (geofences.isEmpty()) {
+            clear()
+            return
+        }
 
-        geofencingClient.addGeofences(
-            GeofencingRequest.Builder()
-                .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                .addGeofences(geofences)
-                .build(),
-            pendingIntent()
-        )
+        geofencingClient.removeGeofences(pendingIntent())
+            .addOnCompleteListener {
+                geofencingClient.addGeofences(
+                    GeofencingRequest.Builder()
+                        .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                        .addGeofences(geofences)
+                        .build(),
+                    pendingIntent()
+                )
+                    .addOnFailureListener { Log.w(TAG, "Failed to register geofences", it) }
+            }
     }
 
     fun clear() {
@@ -54,11 +66,17 @@ class BrandGeofenceManager(
 
     private fun pendingIntent(): PendingIntent {
         val intent = Intent(appContext, GeofenceBroadcastReceiver::class.java)
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_MUTABLE
+            } else {
+                0
+            }
         return PendingIntent.getBroadcast(
             appContext,
             2001,
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            flags
         )
     }
 
@@ -67,5 +85,9 @@ class BrandGeofenceManager(
             appContext,
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private companion object {
+        const val TAG = "BrandGeofenceManager"
     }
 }

@@ -53,6 +53,7 @@ class NotificationHelper(
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val reminderIds = match.reminders.map { it.id }.toLongArray()
         val title = when {
             match.nearestPlace?.estimatedTravelMinutes != null ->
                 "You are ${match.nearestPlace.estimatedTravelMinutes} min from ${match.brandName}"
@@ -71,6 +72,24 @@ class NotificationHelper(
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
             .setContentIntent(pendingIntent)
+            .addAction(
+                0,
+                "Done",
+                actionPendingIntent(
+                    action = NotificationActionReceiver.ACTION_COMPLETE,
+                    requestCode = match.brandQuery.hashCode() + 1,
+                    reminderIds = reminderIds
+                )
+            )
+            .addAction(
+                0,
+                "Snooze 30m",
+                actionPendingIntent(
+                    action = NotificationActionReceiver.ACTION_SNOOZE,
+                    requestCode = match.brandQuery.hashCode() + 2,
+                    reminderIds = reminderIds
+                )
+            )
             .setSilent(!soundEnabled)
             .setAutoCancel(true)
             .build()
@@ -81,5 +100,22 @@ class NotificationHelper(
 
     companion object {
         const val CHANNEL_ERRANDS = "errand_reminders"
+    }
+
+    private fun actionPendingIntent(
+        action: String,
+        requestCode: Int,
+        reminderIds: LongArray
+    ): PendingIntent {
+        val intent = Intent(context, NotificationActionReceiver::class.java).apply {
+            this.action = action
+            putExtra(NotificationActionReceiver.EXTRA_REMINDER_IDS, reminderIds)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 }

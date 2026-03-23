@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class AddReminderUiState(
+    val reminderId: Long? = null,
+    val isEditing: Boolean = false,
     val title: String = "",
     val notes: String = "",
     val brandName: String = BrandCatalog.defaults.first().name,
@@ -34,6 +36,7 @@ data class AddReminderUiState(
     val allowedDays: Set<Int> = setOf(1, 2, 3, 4, 5),
     val allowedStartMinutes: Int = 9 * 60,
     val allowedEndMinutes: Int = 20 * 60,
+    val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val saveCompleted: Boolean = false,
     val errorMessage: String? = null
@@ -41,7 +44,8 @@ data class AddReminderUiState(
 
 class AddReminderViewModel(
     private val repository: PingPlaceRepository,
-    private val scheduler: MonitorScheduler
+    private val scheduler: MonitorScheduler,
+    private val reminderId: Long? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddReminderUiState())
@@ -62,6 +66,9 @@ class AddReminderViewModel(
                     }
                 )
             }
+        }
+        if (reminderId != null) {
+            loadReminder(reminderId)
         }
     }
 
@@ -100,29 +107,43 @@ class AddReminderViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             val now = System.currentTimeMillis()
-            repository.saveReminder(
-                ReminderEntity(
-                    title = state.title.trim(),
-                    notes = state.notes.trim(),
-                    brandName = state.brandName.trim(),
-                    brandQuery = state.brandQuery.trim(),
-                    triggerType = state.triggerType,
-                    triggerDistanceMeters = state.triggerDistanceMeters,
-                    triggerTravelTimeMinutes = state.triggerTravelTimeMinutes,
-                    requiresDrivingFast = state.requiresDrivingFast,
-                    checklistItems = state.checklistText.lines().filter { it.isNotBlank() },
-                    priority = state.priority,
-                    dueDateEpochMillis = state.dueDateEpochMillis,
-                    repeatType = state.repeatType,
-                    repeatDaysOfWeek = state.repeatDays,
-                    respectBlockedTimes = state.blockedTimeBehavior,
-                    customAllowedDaysOfWeek = state.allowedDays,
-                    customAllowedStartMinutes = state.allowedStartMinutes,
-                    customAllowedEndMinutes = state.allowedEndMinutes,
-                    createdAtEpochMillis = now,
-                    updatedAtEpochMillis = now
-                )
+            val existing = state.reminderId?.let { repository.getReminder(it) }
+            val reminder = ReminderEntity(
+                id = existing?.id ?: 0,
+                title = state.title.trim(),
+                notes = state.notes.trim(),
+                brandName = state.brandName.trim(),
+                brandQuery = state.brandQuery.trim(),
+                triggerType = state.triggerType,
+                triggerDistanceMeters = state.triggerDistanceMeters,
+                triggerTravelTimeMinutes = state.triggerTravelTimeMinutes,
+                requiresDrivingFast = state.requiresDrivingFast,
+                checklistItems = state.checklistText.lines().map(String::trim).filter { it.isNotBlank() },
+                isCompleted = existing?.isCompleted ?: false,
+                isSnoozed = existing?.isSnoozed ?: false,
+                snoozedUntilEpochMillis = existing?.snoozedUntilEpochMillis,
+                priority = state.priority,
+                dueDateEpochMillis = state.dueDateEpochMillis,
+                repeatType = state.repeatType,
+                repeatDaysOfWeek = state.repeatDays,
+                respectBlockedTimes = state.blockedTimeBehavior,
+                customAllowedDaysOfWeek = state.allowedDays,
+                customAllowedStartMinutes = state.allowedStartMinutes,
+                customAllowedEndMinutes = state.allowedEndMinutes,
+                createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
+                updatedAtEpochMillis = now
             )
+            if (existing == null) {
+                repository.saveReminder(reminder)
+            } else {
+                repository.updateReminder(
+                    reminder.copy(
+                        isCompleted = false,
+                        isSnoozed = false,
+                        snoozedUntilEpochMillis = null
+                    )
+                )
+            }
             scheduler.scheduleMonitoring()
             scheduler.triggerImmediateRefresh()
             _uiState.update { it.copy(isSaving = false, saveCompleted = true) }
@@ -133,5 +154,40 @@ class AddReminderViewModel(
 
     private fun Set<Int>.toggle(value: Int): Set<Int> {
         return if (value in this) this - value else this + value
+    }
+
+    private fun loadReminder(id: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val reminder = repository.getReminder(id)
+            _uiState.update { current ->
+                if (reminder == null) {
+                    current.copy(isLoading = false, errorMessage = "Reminder not found.")
+                } else {
+                    current.copy(
+                        reminderId = reminder.id,
+                        isEditing = true,
+                        title = reminder.title,
+                        notes = reminder.notes,
+                        brandName = reminder.brandName,
+                        brandQuery = reminder.brandQuery,
+                        triggerType = reminder.triggerType,
+                        triggerDistanceMeters = reminder.triggerDistanceMeters ?: current.triggerDistanceMeters,
+                        triggerTravelTimeMinutes = reminder.triggerTravelTimeMinutes ?: current.triggerTravelTimeMinutes,
+                        requiresDrivingFast = reminder.requiresDrivingFast,
+                        checklistText = reminder.checklistItems.joinToString("\n"),
+                        priority = reminder.priority ?: ReminderPriority.NORMAL,
+                        repeatType = reminder.repeatType ?: ReminderRepeatType.NONE,
+                        repeatDays = reminder.repeatDaysOfWeek,
+                        dueDateEpochMillis = reminder.dueDateEpochMillis,
+                        blockedTimeBehavior = reminder.respectBlockedTimes,
+                        allowedDays = reminder.customAllowedDaysOfWeek.ifEmpty { current.allowedDays },
+                        allowedStartMinutes = reminder.customAllowedStartMinutes ?: current.allowedStartMinutes,
+                        allowedEndMinutes = reminder.customAllowedEndMinutes ?: current.allowedEndMinutes,
+                        isLoading = false
+                    )
+                }
+            }
+        }
     }
 }

@@ -1,0 +1,63 @@
+{
+  "region": {
+    "id": "texas-area",
+    "displayName": "Texas",
+    "updatedAtEpochMillis": 1770000000000,
+    "minLatitude": 25.8000,
+    "maxLatitude": 36.5000,
+    "minLongitude": -106.7000,
+    "maxLongitude": -93.4000
+  },
+  "places": [
+    {
+      "id": "tx-dallas-wf",
+      "name": "Whole Foods Market",
+      "brand": "Whole Foods",
+      "category": "grocery",
+      "address": "4100 Lomo Alto Dr, Dallas, TX",
+      "latitude": 32.8357,
+      "longitude": -96.8103,
+      "searchText": "whole foods grocery amazon return market"
+    },
+    {
+      "id": "tx-austin-target",
+      "name": "Target",
+      "brand": "Target",
+      "category": "retail",
+      "address": "901 E 5th St, Austin, TX",
+      "latitude": 30.2665,
+      "longitude": -97.7338,
+      "searchText": "target retail household shopping"
+    },
+    {
+      "id": "tx-houston-cvs",
+      "name": "CVS Pharmacy",
+      "brand": "CVS",
+      "category": "pharmacy",
+      "address": "1003 Richmond Ave, Houston, TX",
+      "latitude": 29.7334,
+      "longitude": -95.3925,
+      "searchText": "cvs pharmacy medicine health"
+    },
+    {
+      "id": "tx-san-antonio-home-depot",
+      "name": "The Home Depot",
+      "brand": "Home Depot",
+      "category": "hardware",
+      "address": "435 W Sunset Rd, San Antonio, TX",
+      "latitude": 29.5874,
+      "longitude": -98.5050,
+      "searchText": "home depot hardware tools home improvement"
+    },
+    {
+      "id": "tx-fort-worth-ups",
+      "name": "The UPS Store",
+      "brand": "UPS Store",
+      "category": "shipping",
+      "address": "4630 SW Loop 820, Fort Worth, TX",
+      "latitude": 32.6798,
+      "longitude": -97.3982,
+      "searchText": "ups store shipping package drop off return"
+    }
+  ]
+}

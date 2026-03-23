@@ -1,0 +1,53 @@
+{
+  "region": {
+    "id": "austin-city",
+    "displayName": "Austin",
+    "updatedAtEpochMillis": 1770000000000,
+    "minLatitude": 30.1800,
+    "maxLatitude": 30.4500,
+    "minLongitude": -97.9200,
+    "maxLongitude": -97.6200
+  },
+  "places": [
+    {
+      "id": "austin-wf-1",
+      "name": "Whole Foods Market",
+      "brand": "Whole Foods",
+      "category": "grocery",
+      "address": "525 N Lamar Blvd, Austin, TX",
+      "latitude": 30.2707,
+      "longitude": -97.7533,
+      "searchText": "whole foods grocery amazon return market"
+    },
+    {
+      "id": "austin-home-depot-1",
+      "name": "The Home Depot",
+      "brand": "Home Depot",
+      "category": "hardware",
+      "address": "3600 S I-35 Frontage Rd, Austin, TX",
+      "latitude": 30.2218,
+      "longitude": -97.7561,
+      "searchText": "home depot hardware tools home improvement"
+    },
+    {
+      "id": "austin-target-1",
+      "name": "Target",
+      "brand": "Target",
+      "category": "retail",
+      "address": "901 E 5th St, Austin, TX",
+      "latitude": 30.2665,
+      "longitude": -97.7338,
+      "searchText": "target retail household shopping"
+    },
+    {
+      "id": "austin-ups-1",
+      "name": "The UPS Store",
+      "brand": "UPS Store",
+      "category": "shipping",
+      "address": "10000 Research Blvd, Austin, TX",
+      "latitude": 30.3948,
+      "longitude": -97.7448,
+      "searchText": "ups store shipping package drop off return"
+    }
+  ]
+}

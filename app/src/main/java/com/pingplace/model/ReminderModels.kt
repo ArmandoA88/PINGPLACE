@@ -29,6 +29,12 @@ enum class UnitsSystem {
     METRIC
 }
 
+enum class PlaceSearchMode {
+    HYBRID,
+    OFFLINE_ONLY,
+    LIVE_ONLY
+}
+
 enum class ReminderFilter {
     ACTIVE,
     COMPLETED,

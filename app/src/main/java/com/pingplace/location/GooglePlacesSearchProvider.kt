@@ -20,7 +20,7 @@ class GooglePlacesSearchProvider(
         radiusMeters: Double
     ): Result<List<NearbyPlace>> {
         if (BuildConfig.PLACES_API_KEY.isBlank()) {
-            return Result.failure(IllegalStateException("Missing PLACES_API_KEY"))
+            return Result.failure(MissingPlacesApiKeyException())
         }
 
         return withContext(Dispatchers.IO) {
@@ -56,7 +56,7 @@ class GooglePlacesSearchProvider(
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
-                        error("Places request failed: ${response.code}")
+                        throw PlacesRequestFailedException(response.code)
                     }
                     val payload = JSONObject(response.body?.string().orEmpty())
                     val placesArray = payload.optJSONArray("places") ?: return@use emptyList()
@@ -86,4 +86,9 @@ class GooglePlacesSearchProvider(
             }
         }
     }
+
+    class MissingPlacesApiKeyException : IllegalStateException("Missing PLACES_API_KEY")
+
+    class PlacesRequestFailedException(val code: Int) :
+        IllegalStateException("Places request failed: $code")
 }

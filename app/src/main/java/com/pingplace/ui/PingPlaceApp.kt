@@ -37,6 +37,7 @@ import com.pingplace.ui.blocked.BlockedTimesViewModel
 import com.pingplace.ui.brand.BrandDetailScreen
 import com.pingplace.ui.brand.BrandDetailViewModel
 import com.pingplace.ui.common.viewModelFactory
+import com.pingplace.ui.common.ReliabilityStatus
 import com.pingplace.ui.completed.CompletedScreen
 import com.pingplace.ui.completed.CompletedViewModel
 import com.pingplace.ui.home.HomeScreen
@@ -53,12 +54,14 @@ private object PingPlaceRoutes {
     const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val ADD = "add"
+    const val EDIT = "edit/{id}"
     const val BLOCKED = "blocked"
     const val COMPLETED = "completed"
     const val SETTINGS = "settings"
     const val BRAND = "brand/{brandQuery}"
 
     fun brand(brandQuery: String): String = "brand/${Uri.encode(brandQuery)}"
+    fun edit(id: Long): String = "edit/$id"
 }
 
 private data class TopLevelDestination(
@@ -71,10 +74,13 @@ private data class TopLevelDestination(
 fun PingPlaceApp(
     container: AppContainer,
     initialBrandQuery: String?,
-    isLocationServicesEnabled: Boolean,
+    reliabilityStatus: ReliabilityStatus,
     requestNotifications: () -> Unit,
     requestFineLocation: () -> Unit,
-    requestBackgroundLocation: () -> Unit
+    requestBackgroundLocation: () -> Unit,
+    openLocationSettings: () -> Unit,
+    openAppSettings: () -> Unit,
+    openBatterySettings: () -> Unit
 ) {
     val navController = rememberNavController()
     val settings by container.repository.observeUserSettings()
@@ -165,9 +171,13 @@ fun PingPlaceApp(
                     )
                     OnboardingScreen(
                         innerPadding = padding,
+                        reliabilityStatus = reliabilityStatus,
                         onRequestNotifications = requestNotifications,
                         onRequestFineLocation = requestFineLocation,
                         onRequestBackgroundLocation = requestBackgroundLocation,
+                        onOpenLocationSettings = openLocationSettings,
+                        onOpenAppSettings = openAppSettings,
+                        onOpenBatterySettings = openBatterySettings,
                         onContinue = vm::finishOnboarding
                     )
                 }
@@ -180,15 +190,37 @@ fun PingPlaceApp(
                     HomeScreen(
                         innerPadding = padding,
                         viewModel = vm,
-                        isLocationServicesEnabled = isLocationServicesEnabled,
+                        isLocationServicesEnabled = reliabilityStatus.locationServicesEnabled,
                         onAddReminder = { navController.navigate(PingPlaceRoutes.ADD) },
-                        onBrandClick = { navController.navigate(PingPlaceRoutes.brand(it)) }
+                        onBrandClick = { navController.navigate(PingPlaceRoutes.brand(it)) },
+                        onEditReminder = { navController.navigate(PingPlaceRoutes.edit(it)) }
                     )
                 }
                 composable(PingPlaceRoutes.ADD) {
                     val vm: AddReminderViewModel = viewModel(
                         factory = viewModelFactory {
                             AddReminderViewModel(container.repository, container.monitorScheduler)
+                        }
+                    )
+                    AddReminderScreen(
+                        innerPadding = padding,
+                        viewModel = vm,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable(
+                    route = PingPlaceRoutes.EDIT,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType })
+                ) { backStackEntry ->
+                    val reminderId = backStackEntry.arguments?.getLong("id") ?: 0L
+                    val vm: AddReminderViewModel = viewModel(
+                        key = "edit_$reminderId",
+                        factory = viewModelFactory {
+                            AddReminderViewModel(
+                                repository = container.repository,
+                                scheduler = container.monitorScheduler,
+                                reminderId = reminderId
+                            )
                         }
                     )
                     AddReminderScreen(
@@ -228,13 +260,21 @@ fun PingPlaceApp(
                             SettingsViewModel(
                                 repository = container.repository,
                                 scheduler = container.monitorScheduler,
-                                notificationHelper = container.notificationHelper
+                                notificationHelper = container.notificationHelper,
+                                offlinePackManager = container.offlinePackManager
                             )
                         }
                     )
                     SettingsScreen(
                         innerPadding = padding,
-                        viewModel = vm
+                        viewModel = vm,
+                        reliabilityStatus = reliabilityStatus,
+                        onRequestNotifications = requestNotifications,
+                        onRequestFineLocation = requestFineLocation,
+                        onRequestBackgroundLocation = requestBackgroundLocation,
+                        onOpenLocationSettings = openLocationSettings,
+                        onOpenAppSettings = openAppSettings,
+                        onOpenBatterySettings = openBatterySettings
                     )
                 }
                 composable(
@@ -257,7 +297,8 @@ fun PingPlaceApp(
                     BrandDetailScreen(
                         innerPadding = padding,
                         viewModel = vm,
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
+                        onEditReminder = { navController.navigate(PingPlaceRoutes.edit(it)) }
                     )
                 }
             }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -32,6 +33,7 @@ import com.pingplace.model.ReminderRepeatType
 import com.pingplace.model.TriggerType
 import com.pingplace.ui.common.SelectionChip
 import com.pingplace.ui.theme.PingPlaceTheme
+import com.pingplace.ui.common.formatDueDate
 
 private val distanceOptions = listOf(150, 500, 804, 1609, 3218, 8046)
 private val timeOptions = listOf(5, 10, 15, 20)
@@ -56,8 +58,19 @@ fun AddReminderScreen(
 
     Scaffold(
         modifier = Modifier.padding(innerPadding),
-        topBar = { TopAppBar(title = { Text("Add reminder") }) }
+        topBar = { TopAppBar(title = { Text(if (uiState.isEditing) "Edit reminder" else "Add reminder") }) }
     ) { padding ->
+        if (uiState.isLoading) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -215,6 +228,10 @@ fun AddReminderScreen(
                             onClick = { viewModel.updateDueDate(System.currentTimeMillis() + 86_400_000) },
                         )
                     }
+                    Text(
+                        text = "Current: ${formatDueDate(uiState.dueDateEpochMillis) ?: "None"}",
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
                 }
             }
             item {
@@ -271,7 +288,13 @@ fun AddReminderScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.isSaving
                 ) {
-                    Text(if (uiState.isSaving) "Saving..." else "Save reminder")
+                    Text(
+                        when {
+                            uiState.isSaving -> "Saving..."
+                            uiState.isEditing -> "Update reminder"
+                            else -> "Save reminder"
+                        }
+                    )
                 }
             }
         }

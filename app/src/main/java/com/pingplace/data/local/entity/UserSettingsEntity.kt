@@ -2,6 +2,7 @@ package com.pingplace.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.pingplace.model.PlaceSearchMode
 import com.pingplace.model.TriggerType
 import com.pingplace.model.UnitsSystem
 
@@ -12,6 +13,7 @@ data class UserSettingsEntity(
     val defaultDistanceMeters: Int = 1609,
     val defaultTravelTimeMinutes: Int = 10,
     val units: UnitsSystem = UnitsSystem.IMPERIAL,
+    val placeSearchMode: PlaceSearchMode = PlaceSearchMode.HYBRID,
     val notificationsEnabled: Boolean = true,
     val backgroundLocationEnabled: Boolean = false,
     val respectBlockedTimesByDefault: Boolean = true,

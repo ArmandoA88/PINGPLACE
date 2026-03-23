@@ -3,6 +3,8 @@ package com.pingplace.ui.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,9 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pingplace.data.local.entity.ReminderEntity
 import com.pingplace.model.ReminderFilter
+import com.pingplace.model.ReminderPriority
 import com.pingplace.model.TriggerType
 import com.pingplace.model.UnitsSystem
 import com.pingplace.ui.common.SelectionChip
+import com.pingplace.ui.common.formatDueDate
 import com.pingplace.ui.common.formatTrigger
 import com.pingplace.ui.theme.PingPlaceTheme
 
@@ -49,7 +53,8 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     isLocationServicesEnabled: Boolean,
     onAddReminder: () -> Unit,
-    onBrandClick: (String) -> Unit
+    onBrandClick: (String) -> Unit,
+    onEditReminder: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -131,7 +136,11 @@ fun HomeScreen(
                         units = uiState.units,
                         onOpen = { onBrandClick(group.brandQuery) },
                         onComplete = { viewModel.completeBrand(group) },
-                        onSnooze = { viewModel.snoozeBrand(group) }
+                        onSnooze = { viewModel.snoozeBrand(group) },
+                        onEditReminder = onEditReminder,
+                        onCompleteReminder = viewModel::completeReminder,
+                        onSnoozeReminder = viewModel::snoozeReminder,
+                        onDeleteReminder = viewModel::deleteReminder
                     )
                 }
             }
@@ -157,13 +166,18 @@ private fun EmptyStateCard(onAddReminder: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BrandCard(
     group: BrandGroupUiModel,
     units: UnitsSystem,
     onOpen: () -> Unit,
     onComplete: () -> Unit,
-    onSnooze: () -> Unit
+    onSnooze: () -> Unit,
+    onEditReminder: (Long) -> Unit,
+    onCompleteReminder: (Long) -> Unit,
+    onSnoozeReminder: (Long) -> Unit,
+    onDeleteReminder: (Long) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -191,14 +205,70 @@ private fun BrandCard(
             }
 
             group.reminders.take(3).forEach { reminder ->
-                Text(
-                    "- ${reminder.title} - ${formatTrigger(reminder.triggerType, reminder.triggerDistanceMeters, reminder.triggerTravelTimeMinutes, units)}"
+                ReminderSummary(
+                    reminder = reminder,
+                    units = units,
+                    onEdit = { onEditReminder(reminder.id) },
+                    onComplete = { onCompleteReminder(reminder.id) },
+                    onSnooze = { onSnoozeReminder(reminder.id) },
+                    onDelete = { onDeleteReminder(reminder.id) }
                 )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SelectionChip(label = "Complete all", selected = false, onClick = onComplete)
                 SelectionChip(label = "Snooze 30 min", selected = false, onClick = onSnooze)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReminderSummary(
+    reminder: ReminderEntity,
+    units: UnitsSystem,
+    onEdit: () -> Unit,
+    onComplete: () -> Unit,
+    onSnooze: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(reminder.title, style = MaterialTheme.typography.titleMedium)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SelectionChip(
+                    label = reminder.priority?.name ?: ReminderPriority.NORMAL.name,
+                    selected = reminder.priority == ReminderPriority.HIGH,
+                    onClick = {}
+                )
+                formatDueDate(reminder.dueDateEpochMillis)?.let {
+                    SelectionChip(label = "Due $it", selected = false, onClick = {})
+                }
+                if (reminder.isSnoozed) {
+                    SelectionChip(label = "Snoozed", selected = true, onClick = {})
+                }
+            }
+            Text(formatTrigger(reminder.triggerType, reminder.triggerDistanceMeters, reminder.triggerTravelTimeMinutes, units))
+            if (reminder.notes.isNotBlank()) {
+                Text(reminder.notes, style = MaterialTheme.typography.bodyMedium)
+            }
+            reminder.checklistItems.forEach {
+                Text("- $it", style = MaterialTheme.typography.bodySmall)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SelectionChip(label = "Edit", selected = false, onClick = onEdit)
+                SelectionChip(label = "Done", selected = false, onClick = onComplete)
+                SelectionChip(label = "Snooze", selected = false, onClick = onSnooze)
+                SelectionChip(label = "Delete", selected = false, onClick = onDelete)
             }
         }
     }
@@ -244,7 +314,11 @@ private fun HomePreview() {
                 units = UnitsSystem.IMPERIAL,
                 onOpen = {},
                 onComplete = {},
-                onSnooze = {}
+                onSnooze = {},
+                onEditReminder = {},
+                onCompleteReminder = {},
+                onSnoozeReminder = {},
+                onDeleteReminder = {}
             )
         }
     }

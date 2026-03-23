@@ -10,14 +10,17 @@ interface PingPlaceRepository {
     fun observeReminders(): Flow<List<ReminderEntity>>
     fun observeCompletedReminders(): Flow<List<ReminderEntity>>
     fun observeRemindersByBrand(brandQuery: String): Flow<List<ReminderEntity>>
+    fun observeReminder(id: Long): Flow<ReminderEntity?>
     fun observeBlockedTimeWindows(): Flow<List<BlockedTimeWindowEntity>>
     fun observeUserSettings(): Flow<UserSettingsEntity>
     suspend fun getUserSettings(): UserSettingsEntity
     suspend fun getEnabledBlockedTimeWindows(): List<BlockedTimeWindowEntity>
     suspend fun getReadyToEvaluateReminders(): List<ReminderEntity>
     suspend fun getActiveBrandQueries(): List<String>
+    suspend fun getReminder(id: Long): ReminderEntity?
     suspend fun saveReminder(reminder: ReminderEntity): Long
     suspend fun updateReminder(reminder: ReminderEntity)
+    suspend fun deleteReminder(id: Long)
     suspend fun setReminderCompleted(id: Long, isCompleted: Boolean)
     suspend fun snoozeReminder(id: Long, untilEpochMillis: Long?)
     suspend fun clearExpiredSnoozes(nowEpochMillis: Long)

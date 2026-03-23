@@ -1,0 +1,112 @@
+{
+  "packs": [
+    {
+      "id": "dallas-city",
+      "displayName": "Dallas",
+      "kind": "CITY",
+      "region": "Texas",
+      "subtitle": "Real OpenStreetMap stores for the Dallas city area",
+      "sourceType": "OVERPASS_BBOX",
+      "south": 32.7000,
+      "west": -96.9900,
+      "north": 32.9400,
+      "east": -96.6800
+    },
+    {
+      "id": "austin-city",
+      "displayName": "Austin",
+      "kind": "CITY",
+      "region": "Texas",
+      "subtitle": "Real OpenStreetMap stores for the Austin city area",
+      "sourceType": "OVERPASS_BBOX",
+      "south": 30.1800,
+      "west": -97.9200,
+      "north": 30.4500,
+      "east": -97.6200
+    },
+    {
+      "id": "fort-worth-city",
+      "displayName": "Fort Worth",
+      "kind": "CITY",
+      "region": "Texas",
+      "subtitle": "Real OpenStreetMap stores for the Fort Worth city area",
+      "sourceType": "OVERPASS_BBOX",
+      "south": 32.6200,
+      "west": -97.5500,
+      "north": 32.8900,
+      "east": -97.1500
+    },
+    {
+      "id": "houston-city",
+      "displayName": "Houston",
+      "kind": "CITY",
+      "region": "Texas",
+      "subtitle": "Real OpenStreetMap stores for the Houston inner city area",
+      "sourceType": "OVERPASS_BBOX",
+      "south": 29.5800,
+      "west": -95.7000,
+      "north": 29.9000,
+      "east": -95.0200
+    },
+    {
+      "id": "san-antonio-city",
+      "displayName": "San Antonio",
+      "kind": "CITY",
+      "region": "Texas",
+      "subtitle": "Real OpenStreetMap stores for the San Antonio city area",
+      "sourceType": "OVERPASS_BBOX",
+      "south": 29.2500,
+      "west": -98.7800,
+      "north": 29.6500,
+      "east": -98.2500
+    },
+    {
+      "id": "dfw-area",
+      "displayName": "Dallas-Fort Worth Area",
+      "kind": "AREA",
+      "region": "Texas",
+      "subtitle": "Real OpenStreetMap stores for the DFW metro area",
+      "sourceType": "OVERPASS_BBOX",
+      "south": 32.5500,
+      "west": -97.5500,
+      "north": 33.1800,
+      "east": -96.4200
+    },
+    {
+      "id": "austin-metro-area",
+      "displayName": "Austin Metro Area",
+      "kind": "AREA",
+      "region": "Texas",
+      "subtitle": "Real OpenStreetMap stores for Austin and nearby suburbs",
+      "sourceType": "OVERPASS_BBOX",
+      "south": 30.0000,
+      "west": -98.1000,
+      "north": 30.7000,
+      "east": -97.4000
+    },
+    {
+      "id": "houston-metro-area",
+      "displayName": "Houston Metro Area",
+      "kind": "AREA",
+      "region": "Texas",
+      "subtitle": "Real OpenStreetMap stores for Houston and nearby suburbs",
+      "sourceType": "OVERPASS_BBOX",
+      "south": 29.3000,
+      "west": -95.9500,
+      "north": 30.2500,
+      "east": -94.9000
+    },
+    {
+      "id": "san-antonio-metro-area",
+      "displayName": "San Antonio Metro Area",
+      "kind": "AREA",
+      "region": "Texas",
+      "subtitle": "Real OpenStreetMap stores for San Antonio and nearby suburbs",
+      "sourceType": "OVERPASS_BBOX",
+      "south": 29.0500,
+      "west": -98.9500,
+      "north": 29.9000,
+      "east": -98.1000
+    }
+  ]
+}

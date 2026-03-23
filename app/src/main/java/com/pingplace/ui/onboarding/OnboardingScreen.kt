@@ -3,6 +3,8 @@ package com.pingplace.ui.onboarding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,13 +35,20 @@ import com.pingplace.ui.theme.CreamSurface
 import com.pingplace.ui.theme.MeadowGreen
 import com.pingplace.ui.theme.PingPlaceTheme
 import com.pingplace.ui.theme.Sand
+import com.pingplace.ui.common.ReliabilityStatus
+import com.pingplace.ui.common.SelectionChip
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OnboardingScreen(
     innerPadding: PaddingValues,
+    reliabilityStatus: ReliabilityStatus,
     onRequestNotifications: () -> Unit,
     onRequestFineLocation: () -> Unit,
     onRequestBackgroundLocation: () -> Unit,
+    onOpenLocationSettings: () -> Unit,
+    onOpenAppSettings: () -> Unit,
+    onOpenBatterySettings: () -> Unit,
     onContinue: () -> Unit
 ) {
     LazyColumn(
@@ -101,6 +110,33 @@ fun OnboardingScreen(
             }
         }
         item {
+            OnboardingCard(
+                icon = { Icon(Icons.Outlined.Schedule, null, modifier = Modifier.size(28.dp)) },
+                title = "Keep reminders reliable",
+                body = "Nearby alerts need location services, background location, notifications, and relaxed battery restrictions."
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatusChip("Location services", reliabilityStatus.locationServicesEnabled)
+                    StatusChip("Precise location", reliabilityStatus.fineLocationGranted)
+                    StatusChip("Background location", reliabilityStatus.backgroundLocationGranted)
+                    StatusChip("Notifications", reliabilityStatus.notificationsGranted)
+                    StatusChip("Battery unrestricted", reliabilityStatus.batteryOptimizationDisabled)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = onOpenLocationSettings, modifier = Modifier.weight(1f)) {
+                        Text("Location settings")
+                    }
+                    Button(onClick = onOpenAppSettings, modifier = Modifier.weight(1f)) {
+                        Text("App settings")
+                    }
+                }
+                Button(onClick = onOpenBatterySettings, modifier = Modifier.fillMaxWidth()) {
+                    Text("Battery settings")
+                }
+            }
+        }
+        item {
             Button(
                 onClick = onContinue,
                 modifier = Modifier
@@ -145,10 +181,23 @@ private fun OnboardingPreview() {
     PingPlaceTheme {
         OnboardingScreen(
             innerPadding = PaddingValues(),
+            reliabilityStatus = ReliabilityStatus(false, false, false, false, false),
             onRequestNotifications = {},
             onRequestFineLocation = {},
             onRequestBackgroundLocation = {},
+            onOpenLocationSettings = {},
+            onOpenAppSettings = {},
+            onOpenBatterySettings = {},
             onContinue = {}
         )
     }
+}
+
+@Composable
+private fun StatusChip(label: String, enabled: Boolean) {
+    SelectionChip(
+        selected = enabled,
+        onClick = {},
+        label = "$label: ${if (enabled) "On" else "Off"}"
+    )
 }

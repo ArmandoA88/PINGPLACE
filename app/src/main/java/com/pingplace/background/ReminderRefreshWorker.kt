@@ -21,6 +21,10 @@ class ReminderRefreshWorker(
         val container = (applicationContext as PingPlaceApplication).container
         val repository = container.repository
         val settings = repository.getUserSettings()
+        if (!settings.backgroundLocationEnabled) {
+            container.geofenceManager.clear()
+            return Result.success()
+        }
         repository.clearExpiredSnoozes(System.currentTimeMillis())
         val reminders = repository.getReadyToEvaluateReminders()
             .filterNot { it.isCompleted }
