@@ -6,7 +6,9 @@ import androidx.room.withTransaction
 import com.pingplace.data.local.PingPlaceDatabase
 import com.pingplace.data.local.entity.OfflinePlaceEntity
 import com.pingplace.data.local.entity.OfflineRegionEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,59 +27,74 @@ class OfflinePackManager(
     fun observeInstalledRegions(): Flow<List<OfflineRegionEntity>> =
         database.offlineRegionDao().observeAll()
 
-    suspend fun loadCatalog(): Result<List<OfflinePackDescriptor>> = runCatching {
-        val remoteUrl = BuildConfig.OFFLINE_PACK_MANIFEST_URL.trim()
-        if (remoteUrl.isNotBlank()) {
-            val remote = fetchCatalogFromUrl(remoteUrl)
-            if (remote.isNotEmpty()) {
-                return@runCatching remote
-            }
-        }
-        loadCatalogFromAssets()
+    suspend fun getRegion(regionId: String): OfflineRegionEntity? = withContext(Dispatchers.IO) {
+        database.offlineRegionDao().getById(regionId)
     }
 
-    suspend fun importCatalogPack(descriptor: OfflinePackDescriptor): Result<OfflineRegionEntity> = runCatching {
-        when (descriptor.sourceType) {
-            OfflinePackSourceType.REMOTE_JSON -> {
-                require(!descriptor.sourceUrl.isNullOrBlank()) { "Pack URL is missing." }
-                val request = Request.Builder().url(descriptor.sourceUrl).build()
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) error("Pack download failed: ${response.code}")
-                    val payload = response.body?.string().orEmpty()
-                    importPackJson(payload, sourceUrl = descriptor.sourceUrl)
+    suspend fun getRegionPlaces(regionId: String, limit: Int = MAP_VIEW_PLACE_LIMIT): List<OfflinePlaceEntity> =
+        withContext(Dispatchers.IO) {
+            database.offlinePlaceDao().getByRegion(regionId, limit)
+        }
+
+    suspend fun loadCatalog(): Result<List<OfflinePackDescriptor>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val remoteUrl = BuildConfig.OFFLINE_PACK_MANIFEST_URL.trim()
+            if (remoteUrl.isNotBlank()) {
+                val remote = fetchCatalogFromUrl(remoteUrl)
+                if (remote.isNotEmpty()) {
+                    return@runCatching remote
                 }
             }
-            OfflinePackSourceType.BUNDLED_JSON -> {
-                require(!descriptor.assetPath.isNullOrBlank()) { "Pack asset is missing." }
-                val payload = appContext.assets.open(descriptor.assetPath).bufferedReader().use { it.readText() }
-                importPackJson(payload, sourceUrl = "asset://${descriptor.assetPath}")
+            loadCatalogFromAssets()
+        }
+    }
+
+    suspend fun importCatalogPack(descriptor: OfflinePackDescriptor): Result<OfflineRegionEntity> = withContext(Dispatchers.IO) {
+        runCatching {
+            when (descriptor.sourceType) {
+                OfflinePackSourceType.REMOTE_JSON -> {
+                    require(!descriptor.sourceUrl.isNullOrBlank()) { "Pack URL is missing." }
+                    val request = Request.Builder().url(descriptor.sourceUrl).build()
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) error("Pack download failed: ${response.code}")
+                        val payload = response.body?.string().orEmpty()
+                        importPackJson(payload, sourceUrl = descriptor.sourceUrl)
+                    }
+                }
+                OfflinePackSourceType.BUNDLED_JSON -> {
+                    require(!descriptor.assetPath.isNullOrBlank()) { "Pack asset is missing." }
+                    val payload = appContext.assets.open(descriptor.assetPath).bufferedReader().use { it.readText() }
+                    importPackJson(payload, sourceUrl = "asset://${descriptor.assetPath}")
+                }
+                OfflinePackSourceType.OVERPASS_BBOX -> importOverpassPack(descriptor)
             }
-            OfflinePackSourceType.OVERPASS_BBOX -> importOverpassPack(descriptor)
         }
     }
 
-    suspend fun importPackFromUrl(url: String): Result<OfflineRegionEntity> = runCatching {
-        val request = Request.Builder().url(url).build()
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) error("Pack download failed: ${response.code}")
-            val payload = response.body?.string().orEmpty()
-            importPackJson(payload, sourceUrl = url)
+    suspend fun importPackFromUrl(url: String): Result<OfflineRegionEntity> = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder().url(url).build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) error("Pack download failed: ${response.code}")
+                val payload = response.body?.string().orEmpty()
+                importPackJson(payload, sourceUrl = url)
+            }
         }
     }
 
-    suspend fun removeLegacySamplePacks(): Int {
+    suspend fun removeLegacySamplePacks(): Int = withContext(Dispatchers.IO) {
         val legacyIds = database.offlineRegionDao().getLegacySampleIds(LEGACY_SAMPLE_UPDATED_AT_EPOCH_MILLIS)
-        if (legacyIds.isEmpty()) return 0
+        if (legacyIds.isEmpty()) return@withContext 0
         database.withTransaction {
             legacyIds.forEach { regionId ->
                 database.offlinePlaceDao().deleteByRegion(regionId)
                 database.offlineRegionDao().deleteById(regionId)
             }
         }
-        return legacyIds.size
+        legacyIds.size
     }
 
-    suspend fun removePack(regionId: String) {
+    suspend fun removePack(regionId: String) = withContext(Dispatchers.IO) {
         database.withTransaction {
             database.offlinePlaceDao().deleteByRegion(regionId)
             database.offlineRegionDao().deleteById(regionId)
@@ -337,5 +354,6 @@ class OfflinePackManager(
     private companion object {
         const val OVERPASS_INTERPRETER_URL = "https://overpass-api.de/api/interpreter"
         const val LEGACY_SAMPLE_UPDATED_AT_EPOCH_MILLIS = 1_770_000_000_000L
+        const val MAP_VIEW_PLACE_LIMIT = 1_500
     }
 }

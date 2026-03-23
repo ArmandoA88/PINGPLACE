@@ -16,6 +16,9 @@ interface OfflineRegionDao {
     @Query("SELECT * FROM offline_regions ORDER BY displayName ASC")
     suspend fun getAll(): List<OfflineRegionEntity>
 
+    @Query("SELECT * FROM offline_regions WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): OfflineRegionEntity?
+
     @Query(
         """
         SELECT id FROM offline_regions

@@ -27,6 +27,16 @@ interface OfflinePlaceDao {
         limit: Int
     ): List<OfflinePlaceEntity>
 
+    @Query(
+        """
+        SELECT * FROM offline_places
+        WHERE regionId = :regionId
+        ORDER BY name ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun getByRegion(regionId: String, limit: Int): List<OfflinePlaceEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(places: List<OfflinePlaceEntity>)
 

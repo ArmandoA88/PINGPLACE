@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -45,7 +46,8 @@ fun SettingsScreen(
     onRequestBackgroundLocation: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
-    onOpenBatterySettings: () -> Unit
+    onOpenBatterySettings: () -> Unit,
+    onViewOfflineMap: (String) -> Unit
 ) {
     val settings by viewModel.uiState.collectAsStateWithLifecycle()
     val installedRegions by viewModel.installedRegions.collectAsStateWithLifecycle()
@@ -62,16 +64,18 @@ fun SettingsScreen(
         }
 
     Scaffold(
-        modifier = Modifier.padding(innerPadding),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { TopAppBar(title = { Text("Settings") }) }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(
+                top = padding.calculateTopPadding(),
+                bottom = innerPadding.calculateBottomPadding() + 32.dp
+            )
         ) {
             item {
                 SettingsCard("Default trigger mode") {
@@ -258,6 +262,8 @@ fun SettingsScreen(
                         installedIds = installedIds,
                         isImporting = offlineState.isImporting,
                         activePackId = offlineState.activePackId,
+                        statusPackId = offlineState.statusPackId,
+                        statusMessage = offlineState.statusMessage,
                         onInstall = viewModel::installBundledPack
                     )
                     if (filteredPacks.isEmpty()) {
@@ -286,6 +292,11 @@ fun SettingsScreen(
                                         .padding(12.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
+                                    val regionStatusMessage = if (offlineState.statusPackId == region.id) {
+                                        offlineState.statusMessage
+                                    } else {
+                                        null
+                                    }
                                     Text(region.displayName, style = MaterialTheme.typography.titleMedium)
                                     Text("${region.placeCount} places")
                                     formatDateTime(region.updatedAtEpochMillis ?: region.downloadedAtEpochMillis)?.let {
@@ -298,6 +309,15 @@ fun SettingsScreen(
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Text(if (isRefreshing) "Updating stores..." else "Update stores")
+                                    }
+                                    Button(
+                                        onClick = { onViewOfflineMap(region.id) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("View map")
+                                    }
+                                    if (regionStatusMessage != null) {
+                                        Text(regionStatusMessage)
                                     }
                                     Button(
                                         onClick = { viewModel.removeOfflinePack(region.id) },
@@ -342,6 +362,8 @@ private fun PackList(
     installedIds: Set<String>,
     isImporting: Boolean,
     activePackId: String?,
+    statusPackId: String?,
+    statusMessage: String?,
     onInstall: (OfflinePackDescriptor) -> Unit
 ) {
     packs.forEach { pack ->
@@ -373,6 +395,9 @@ private fun PackList(
                             else -> "Download map"
                         }
                     )
+                }
+                if (statusPackId == pack.id && statusMessage != null) {
+                    Text(statusMessage)
                 }
             }
         }

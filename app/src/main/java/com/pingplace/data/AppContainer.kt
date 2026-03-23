@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 class AppContainer(context: Context) {
 
@@ -31,6 +32,12 @@ class AppContainer(context: Context) {
         .fallbackToDestructiveMigration()
         .build()
     private val httpClient = OkHttpClient()
+    private val offlineHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(2, TimeUnit.MINUTES)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(2, TimeUnit.MINUTES)
+        .build()
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val repository: PingPlaceRepository = DefaultPingPlaceRepository(
@@ -44,7 +51,7 @@ class AppContainer(context: Context) {
     val offlinePackManager = OfflinePackManager(
         context = appContext,
         database = database,
-        client = httpClient
+        client = offlineHttpClient
     )
     private val offlinePlaceSearchProvider = OfflinePlaceSearchProvider(
         offlinePlaceDao = database.offlinePlaceDao(),

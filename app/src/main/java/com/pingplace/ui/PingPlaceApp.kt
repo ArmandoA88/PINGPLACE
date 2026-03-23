@@ -44,6 +44,8 @@ import com.pingplace.ui.home.HomeScreen
 import com.pingplace.ui.home.HomeViewModel
 import com.pingplace.ui.onboarding.OnboardingScreen
 import com.pingplace.ui.onboarding.OnboardingViewModel
+import com.pingplace.ui.offline.OfflineRegionMapScreen
+import com.pingplace.ui.offline.OfflineRegionMapViewModel
 import com.pingplace.ui.settings.SettingsScreen
 import com.pingplace.ui.settings.SettingsViewModel
 import com.pingplace.ui.theme.Ember
@@ -58,10 +60,12 @@ private object PingPlaceRoutes {
     const val BLOCKED = "blocked"
     const val COMPLETED = "completed"
     const val SETTINGS = "settings"
+    const val OFFLINE_MAP = "offline-map/{regionId}"
     const val BRAND = "brand/{brandQuery}"
 
     fun brand(brandQuery: String): String = "brand/${Uri.encode(brandQuery)}"
     fun edit(id: Long): String = "edit/$id"
+    fun offlineMap(regionId: String): String = "offline-map/${Uri.encode(regionId)}"
 }
 
 private data class TopLevelDestination(
@@ -274,7 +278,28 @@ fun PingPlaceApp(
                         onRequestBackgroundLocation = requestBackgroundLocation,
                         onOpenLocationSettings = openLocationSettings,
                         onOpenAppSettings = openAppSettings,
-                        onOpenBatterySettings = openBatterySettings
+                        onOpenBatterySettings = openBatterySettings,
+                        onViewOfflineMap = { navController.navigate(PingPlaceRoutes.offlineMap(it)) }
+                    )
+                }
+                composable(
+                    route = PingPlaceRoutes.OFFLINE_MAP,
+                    arguments = listOf(navArgument("regionId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val regionId = Uri.decode(backStackEntry.arguments?.getString("regionId").orEmpty())
+                    val vm: OfflineRegionMapViewModel = viewModel(
+                        key = "offline_map_$regionId",
+                        factory = viewModelFactory {
+                            OfflineRegionMapViewModel(
+                                regionId = regionId,
+                                offlinePackManager = container.offlinePackManager
+                            )
+                        }
+                    )
+                    OfflineRegionMapScreen(
+                        innerPadding = padding,
+                        viewModel = vm,
+                        onBack = { navController.popBackStack() }
                     )
                 }
                 composable(

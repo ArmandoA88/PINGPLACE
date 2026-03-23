@@ -27,6 +27,7 @@ data class OfflinePackUiState(
     val isLoadingCatalog: Boolean = false,
     val isImporting: Boolean = false,
     val activePackId: String? = null,
+    val statusPackId: String? = null,
     val statusMessage: String? = null,
     val searchQuery: String = "",
     val selectedKind: OfflinePackKind? = null
@@ -151,12 +152,14 @@ class SettingsViewModel(
             _offlineUiState.value = _offlineUiState.value.copy(
                 isImporting = true,
                 activePackId = descriptor.id,
-                statusMessage = null
+                statusPackId = descriptor.id,
+                statusMessage = "Downloading ${descriptor.displayName} map..."
             )
             val result = offlinePackManager.importCatalogPack(descriptor)
             _offlineUiState.value = _offlineUiState.value.copy(
                 isImporting = false,
                 activePackId = null,
+                statusPackId = descriptor.id,
                 statusMessage = result.fold(
                     onSuccess = { "Installed ${it.displayName} with ${it.placeCount} places." },
                     onFailure = { "Offline pack install failed: ${it.message ?: "unknown error"}" }
@@ -199,12 +202,14 @@ class SettingsViewModel(
             _offlineUiState.value = _offlineUiState.value.copy(
                 isImporting = true,
                 activePackId = "manual",
-                statusMessage = null
+                statusPackId = "manual",
+                statusMessage = "Downloading offline pack..."
             )
             val result = offlinePackManager.importPackFromUrl(url.trim())
             _offlineUiState.value = _offlineUiState.value.copy(
                 isImporting = false,
                 activePackId = null,
+                statusPackId = "manual",
                 statusMessage = result.fold(
                     onSuccess = { "Installed ${it.displayName} with ${it.placeCount} places." },
                     onFailure = { "Offline pack import failed: ${it.message ?: "unknown error"}" }
@@ -216,7 +221,10 @@ class SettingsViewModel(
     fun removeOfflinePack(regionId: String) {
         viewModelScope.launch {
             offlinePackManager.removePack(regionId)
-            _offlineUiState.value = _offlineUiState.value.copy(statusMessage = "Removed offline pack.")
+            _offlineUiState.value = _offlineUiState.value.copy(
+                statusPackId = regionId,
+                statusMessage = "Removed offline pack."
+            )
         }
     }
 
