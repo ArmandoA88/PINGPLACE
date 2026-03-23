@@ -188,7 +188,12 @@ fun PingPlaceApp(
                 composable(PingPlaceRoutes.HOME) {
                     val vm: HomeViewModel = viewModel(
                         factory = viewModelFactory {
-                            HomeViewModel(container.repository, container.monitorScheduler)
+                            HomeViewModel(
+                                repository = container.repository,
+                                scheduler = container.monitorScheduler,
+                                locationClient = container.locationClient,
+                                placeSearchProvider = container.placeSearchProvider
+                            )
                         }
                     )
                     HomeScreen(

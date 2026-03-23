@@ -1,9 +1,5 @@
 package com.pingplace.ui.offline
 
-import android.annotation.SuppressLint
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,8 +23,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pingplace.ui.common.LeafletHtmlMapView
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -110,28 +106,14 @@ fun OfflineRegionMapScreen(
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun OfflineRegionMapWebView(
     modifier: Modifier,
     html: String
 ) {
-    AndroidView(
+    LeafletHtmlMapView(
         modifier = modifier,
-        factory = { context ->
-            WebView(context).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.builtInZoomControls = false
-                settings.displayZoomControls = false
-                webViewClient = WebViewClient()
-                webChromeClient = WebChromeClient()
-                loadDataWithBaseURL("https://pingplace.local/", html, "text/html", "utf-8", null)
-            }
-        },
-        update = { webView ->
-            webView.loadDataWithBaseURL("https://pingplace.local/", html, "text/html", "utf-8", null)
-        }
+        html = html
     )
 }
 
