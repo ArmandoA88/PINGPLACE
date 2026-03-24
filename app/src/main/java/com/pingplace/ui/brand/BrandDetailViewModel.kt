@@ -6,9 +6,9 @@ import com.pingplace.background.MonitorScheduler
 import com.pingplace.data.local.entity.ReminderEntity
 import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.location.DeviceLocationClient
-import com.pingplace.location.GooglePlacesSearchProvider
 import com.pingplace.location.NearbyPlace
 import com.pingplace.location.NearbyPlaceSearchProvider
+import com.pingplace.location.OpenStreetMapSearchProvider
 import com.pingplace.model.ReminderPriority
 import com.pingplace.model.UnitsSystem
 import com.pingplace.offline.OfflinePlaceSearchProvider
@@ -93,11 +93,14 @@ class BrandDetailViewModel(
                 },
                 onFailure = {
                     val message = when (it) {
-                        is GooglePlacesSearchProvider.MissingPlacesApiKeyException ->
-                            "Nearby places need a valid Places API key in BuildConfig."
+                        is OpenStreetMapSearchProvider.RateLimitedException ->
+                            "Free nearby lookup is busy right now. Try again in a minute."
 
-                        is GooglePlacesSearchProvider.PlacesRequestFailedException ->
-                            "Nearby lookup failed with Places status ${it.code}."
+                        is OpenStreetMapSearchProvider.ServiceBusyException ->
+                            "Free nearby lookup timed out. Try again in a minute."
+
+                        is OpenStreetMapSearchProvider.RequestFailedException ->
+                            "Free nearby lookup failed with status ${it.code}."
 
                         is OfflinePlaceSearchProvider.OfflineCoverageMissingException ->
                             "No offline pack is installed for this area."

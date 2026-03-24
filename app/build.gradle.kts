@@ -22,11 +22,6 @@ android {
 
         buildConfigField(
             "String",
-            "PLACES_API_KEY",
-            "\"${project.findProperty("PLACES_API_KEY") as? String ?: ""}\""
-        )
-        buildConfigField(
-            "String",
             "OFFLINE_PACK_MANIFEST_URL",
             "\"${project.findProperty("OFFLINE_PACK_MANIFEST_URL") as? String ?: ""}\""
         )
@@ -98,6 +93,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     testImplementation("junit:junit:4.13.2")
 }

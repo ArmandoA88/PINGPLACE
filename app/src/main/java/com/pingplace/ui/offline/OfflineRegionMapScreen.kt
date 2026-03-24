@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pingplace.ui.common.LeafletHtmlMapView
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,12 +77,18 @@ fun OfflineRegionMapScreen(
 
                 region != null -> {
                     Text(
-                        "Showing ${uiState.places.size} of ${region.placeCount} downloaded stores.",
+                        "Showing ${uiState.places.size} of ${uiState.availablePlaceCount} downloaded stores.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     if (uiState.isShowingTruncatedPlaces) {
                         Text(
                             "Large regions are capped in the viewer for performance.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    uiState.fallbackMessage?.let {
+                        Text(
+                            text = it,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -134,19 +141,40 @@ private fun buildMapHtml(
         }
     }
     val safeRegionName = JSONObject.quote(region.displayName)
+    val fallbackSvg = buildOfflineFallbackSvg(region, places)
     return """
         <!DOCTYPE html>
         <html>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+          <link rel="stylesheet" href="leaflet/leaflet.css" />
           <style>
-            html, body, #map {
+            html, body, #frame, #map, #fallback {
               margin: 0;
               padding: 0;
               height: 100%;
               width: 100%;
               background: #f3efe5;
+            }
+            #frame {
+              position: relative;
+              overflow: hidden;
+            }
+            #fallback, #map {
+              position: absolute;
+              inset: 0;
+            }
+            #fallback {
+              z-index: 1;
+            }
+            #fallback svg {
+              display: block;
+              width: 100%;
+              height: 100%;
+            }
+            #map {
+              z-index: 2;
+              background: transparent;
             }
             .leaflet-popup-content {
               font-family: sans-serif;
@@ -155,8 +183,11 @@ private fun buildMapHtml(
           </style>
         </head>
         <body>
-          <div id="map"></div>
-          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          <div id="frame">
+            <div id="fallback">$fallbackSvg</div>
+            <div id="map"></div>
+          </div>
+          <script src="leaflet/leaflet.js"></script>
           <script>
             const regionName = $safeRegionName;
             const places = $placesJson;
@@ -193,5 +224,58 @@ private fun buildMapHtml(
           </script>
         </body>
         </html>
+    """.trimIndent()
+}
+
+private fun buildOfflineFallbackSvg(
+    region: com.pingplace.data.local.entity.OfflineRegionEntity,
+    places: List<com.pingplace.data.local.entity.OfflinePlaceEntity>
+): String {
+    val width = 1000.0
+    val height = 620.0
+    val insetLeft = 78.0
+    val insetRight = 922.0
+    val insetTop = 54.0
+    val insetBottom = 566.0
+
+    fun scaleX(longitude: Double): Double {
+        val normalized = (longitude - region.minLongitude) /
+            (region.maxLongitude - region.minLongitude).coerceAtLeast(0.000001)
+        return insetLeft + normalized * (insetRight - insetLeft)
+    }
+
+    fun scaleY(latitude: Double): Double {
+        val normalized = (latitude - region.minLatitude) /
+            (region.maxLatitude - region.minLatitude).coerceAtLeast(0.000001)
+        return insetBottom - normalized * (insetBottom - insetTop)
+    }
+
+    fun escaped(value: String): String {
+        return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+    }
+
+    fun coordinate(value: Double): String = String.format(Locale.US, "%.1f", value)
+
+    val markers = buildString {
+        places.take(250).forEach { place ->
+            append(
+                """
+                <circle cx="${coordinate(scaleX(place.longitude))}" cy="${coordinate(scaleY(place.latitude))}" r="5.5" fill="#147D6C" fill-opacity="0.86"/>
+                """.trimIndent()
+            )
+        }
+    }
+
+    return """
+        <svg viewBox="0 0 ${coordinate(width)} ${coordinate(height)}" xmlns="http://www.w3.org/2000/svg" aria-label="Offline fallback map">
+          <rect x="0" y="0" width="${coordinate(width)}" height="${coordinate(height)}" fill="#F3EFE5"/>
+          <rect x="${coordinate(insetLeft)}" y="${coordinate(insetTop)}" width="${coordinate(insetRight - insetLeft)}" height="${coordinate(insetBottom - insetTop)}" rx="28" fill="#F8F3EA" stroke="#DDD3BF" stroke-width="3"/>
+          <text x="${coordinate(insetLeft)}" y="34.0" fill="#6A746E" font-size="24" font-weight="700">${escaped(region.displayName)}</text>
+          <text x="${coordinate(insetLeft)}" y="602.0" fill="#8B948F" font-size="20">Downloaded stores plotted locally while map tiles load.</text>
+          $markers
+        </svg>
     """.trimIndent()
 }

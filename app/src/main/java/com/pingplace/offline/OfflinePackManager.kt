@@ -36,6 +36,50 @@ class OfflinePackManager(
             database.offlinePlaceDao().getByRegion(regionId, limit)
         }
 
+    suspend fun getRegionPlaceCount(regionId: String): Int = withContext(Dispatchers.IO) {
+        database.offlinePlaceDao().countByRegion(regionId)
+    }
+
+    suspend fun getPlacesInBounds(
+        minLatitude: Double,
+        maxLatitude: Double,
+        minLongitude: Double,
+        maxLongitude: Double,
+        limit: Int = MAP_VIEW_PLACE_LIMIT
+    ): List<OfflinePlaceEntity> = withContext(Dispatchers.IO) {
+        database.offlinePlaceDao().getInBounds(
+            minLatitude = minLatitude,
+            maxLatitude = maxLatitude,
+            minLongitude = minLongitude,
+            maxLongitude = maxLongitude,
+            limit = limit
+        )
+    }
+
+    suspend fun countPlacesInBounds(
+        minLatitude: Double,
+        maxLatitude: Double,
+        minLongitude: Double,
+        maxLongitude: Double
+    ): Int = withContext(Dispatchers.IO) {
+        database.offlinePlaceDao().countInBounds(
+            minLatitude = minLatitude,
+            maxLatitude = maxLatitude,
+            minLongitude = minLongitude,
+            maxLongitude = maxLongitude
+        )
+    }
+
+    suspend fun refreshInstalledRegion(regionId: String): Result<OfflineRegionEntity> = withContext(Dispatchers.IO) {
+        runCatching {
+            val descriptor = loadCatalog()
+                .getOrThrow()
+                .firstOrNull { it.id == regionId }
+                ?: error("Offline pack definition for $regionId is unavailable.")
+            importCatalogPack(descriptor).getOrThrow()
+        }
+    }
+
     suspend fun loadCatalog(): Result<List<OfflinePackDescriptor>> = withContext(Dispatchers.IO) {
         runCatching {
             val remoteUrl = BuildConfig.OFFLINE_PACK_MANIFEST_URL.trim()
@@ -178,7 +222,7 @@ class OfflinePackManager(
                 val item = placesJson.getJSONObject(index)
                 add(
                     OfflinePlaceEntity(
-                        id = item.getString("id"),
+                        id = scopedPlaceId(regionId, item.getString("id")),
                         regionId = regionId,
                         name = item.getString("name"),
                         address = item.optString("address"),
@@ -225,7 +269,7 @@ class OfflinePackManager(
                     }
                 }
                 if (name.isBlank()) return@repeat
-                val id = "osm:${item.optString("type")}:${item.optLong("id")}"
+                val id = scopedPlaceId(regionId, "osm:${item.optString("type")}:${item.optLong("id")}")
                 if (!seen.add(id)) return@repeat
                 val address = listOf(
                     tags.optString("addr:housenumber"),
@@ -295,6 +339,8 @@ class OfflinePackManager(
 
     private fun normalizeSearchText(text: String): String =
         text.lowercase().replace(Regex("\\s+"), " ").trim()
+
+    private fun scopedPlaceId(regionId: String, rawId: String): String = "$regionId::$rawId"
 
     private fun fetchCatalogFromUrl(url: String): List<OfflinePackDescriptor> {
         val request = Request.Builder().url(url).build()

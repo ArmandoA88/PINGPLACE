@@ -10,8 +10,8 @@ import com.pingplace.data.repository.DefaultPingPlaceRepository
 import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.location.ConfigurablePlaceSearchProvider
 import com.pingplace.location.DeviceLocationClient
-import com.pingplace.location.GooglePlacesSearchProvider
 import com.pingplace.location.NearbyPlaceSearchProvider
+import com.pingplace.location.OpenStreetMapSearchProvider
 import com.pingplace.offline.OfflinePackManager
 import com.pingplace.offline.OfflinePlaceSearchProvider
 import kotlinx.coroutines.CoroutineScope
@@ -57,7 +57,7 @@ class AppContainer(context: Context) {
         offlinePlaceDao = database.offlinePlaceDao(),
         offlineRegionDao = database.offlineRegionDao()
     )
-    private val livePlaceSearchProvider = GooglePlacesSearchProvider(client = httpClient)
+    private val livePlaceSearchProvider = OpenStreetMapSearchProvider(client = httpClient)
     val placeSearchProvider: NearbyPlaceSearchProvider = ConfigurablePlaceSearchProvider(
         repository = repository,
         offlineProvider = offlinePlaceSearchProvider,

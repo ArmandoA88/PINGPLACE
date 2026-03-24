@@ -15,7 +15,9 @@ data class OfflineRegionMapUiState(
     val region: OfflineRegionEntity? = null,
     val places: List<OfflinePlaceEntity> = emptyList(),
     val errorMessage: String? = null,
-    val isShowingTruncatedPlaces: Boolean = false
+    val isShowingTruncatedPlaces: Boolean = false,
+    val availablePlaceCount: Int = 0,
+    val fallbackMessage: String? = null
 )
 
 class OfflineRegionMapViewModel(
@@ -41,12 +43,51 @@ class OfflineRegionMapViewModel(
                 return@launch
             }
 
-            val places = offlinePackManager.getRegionPlaces(regionId)
+            var currentRegion = region
+            var availablePlaceCount = offlinePackManager.getRegionPlaceCount(regionId)
+            var places = offlinePackManager.getRegionPlaces(regionId)
+            var fallbackMessage: String? = null
+
+            if (currentRegion.placeCount > 0 && places.isEmpty()) {
+                val boundsPlaceCount = offlinePackManager.countPlacesInBounds(
+                    minLatitude = currentRegion.minLatitude,
+                    maxLatitude = currentRegion.maxLatitude,
+                    minLongitude = currentRegion.minLongitude,
+                    maxLongitude = currentRegion.maxLongitude
+                )
+                if (boundsPlaceCount > 0) {
+                    availablePlaceCount = boundsPlaceCount
+                    places = offlinePackManager.getPlacesInBounds(
+                        minLatitude = currentRegion.minLatitude,
+                        maxLatitude = currentRegion.maxLatitude,
+                        minLongitude = currentRegion.minLongitude,
+                        maxLongitude = currentRegion.maxLongitude
+                    )
+                    fallbackMessage =
+                        "Showing stores from overlapping downloaded areas inside this map."
+                } else {
+                    val repairedRegion = offlinePackManager.refreshInstalledRegion(regionId).getOrNull()
+                    if (repairedRegion != null) {
+                        currentRegion = repairedRegion
+                        availablePlaceCount = offlinePackManager.getRegionPlaceCount(regionId)
+                        places = offlinePackManager.getRegionPlaces(regionId)
+                    }
+                }
+            }
+
+            if (availablePlaceCount == 0 && places.isNotEmpty()) {
+                availablePlaceCount = places.size
+            }
+
+            val finalRegion = currentRegion
+            val truncated = availablePlaceCount > places.size
             _uiState.value = OfflineRegionMapUiState(
                 isLoading = false,
-                region = region,
+                region = finalRegion,
                 places = places,
-                isShowingTruncatedPlaces = places.size < region.placeCount
+                isShowingTruncatedPlaces = truncated,
+                availablePlaceCount = availablePlaceCount,
+                fallbackMessage = fallbackMessage
             )
         }
     }

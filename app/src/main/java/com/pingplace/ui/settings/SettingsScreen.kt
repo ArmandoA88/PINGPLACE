@@ -155,7 +155,7 @@ fun SettingsScreen(
                         }
                     }
                     Text(
-                        "Hybrid uses offline packs first, then live lookup. Offline only never calls the Places API.",
+                        "Hybrid uses offline packs first, then free OpenStreetMap lookup. Offline only never uses the network.",
                         modifier = Modifier.padding(top = 12.dp)
                     )
                 }

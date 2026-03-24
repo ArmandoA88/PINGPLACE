@@ -21,10 +21,9 @@ class ConfigurablePlaceSearchProvider(
             PlaceSearchMode.LIVE_ONLY -> liveProvider.searchNearby(query, currentLocation, radiusMeters)
             PlaceSearchMode.HYBRID -> {
                 val offline = offlineProvider.searchNearby(query, currentLocation, radiusMeters)
+                val offlinePlaces = offline.getOrNull()
                 when {
-                    offline.isSuccess && offline.getOrNull().isNullOrEmpty().not() -> offline
-                    offline.exceptionOrNull() !is OfflinePlaceSearchProvider.OfflineCoverageMissingException &&
-                        offline.isSuccess -> offline
+                    offlinePlaces.isNullOrEmpty().not() -> offline
                     else -> liveProvider.searchNearby(query, currentLocation, radiusMeters)
                 }
             }

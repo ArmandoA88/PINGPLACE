@@ -35,7 +35,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,14 +45,11 @@ import com.pingplace.model.ReminderFilter
 import com.pingplace.model.ReminderPriority
 import com.pingplace.model.TriggerType
 import com.pingplace.model.UnitsSystem
-import com.pingplace.ui.common.LeafletHtmlMapView
 import com.pingplace.ui.common.SelectionChip
 import com.pingplace.ui.common.formatDistance
 import com.pingplace.ui.common.formatDueDate
 import com.pingplace.ui.common.formatTrigger
 import com.pingplace.ui.theme.PingPlaceTheme
-import org.json.JSONArray
-import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -233,20 +229,6 @@ private fun NearbyMapCard(
     units: UnitsSystem,
     onRefreshNearby: () -> Unit
 ) {
-    val mapHtml = remember(mapState.latitude, mapState.longitude, mapState.nearbyStores) {
-        val latitude = mapState.latitude
-        val longitude = mapState.longitude
-        if (latitude == null || longitude == null) {
-            null
-        } else {
-            buildDashboardMapHtml(
-                userLatitude = latitude,
-                userLongitude = longitude,
-                places = mapState.nearbyStores
-            )
-        }
-    }
-
     Card(modifier = modifier, shape = RoundedCornerShape(28.dp)) {
         Column(
             modifier = Modifier
@@ -295,12 +277,14 @@ private fun NearbyMapCard(
             }
 
             when {
-                mapHtml != null -> {
-                    LeafletHtmlMapView(
+                mapState.latitude != null && mapState.longitude != null -> {
+                    DashboardTileMap(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(250.dp),
-                        html = mapHtml
+                        userLatitude = mapState.latitude,
+                        userLongitude = mapState.longitude,
+                        places = mapState.nearbyStores
                     )
                 }
 
@@ -591,101 +575,6 @@ private fun ReminderSummary(
             }
         }
     }
-}
-
-private fun buildDashboardMapHtml(
-    userLatitude: Double,
-    userLongitude: Double,
-    places: List<NearbyStoreUiModel>
-): String {
-    val palette = listOf("#1E6B5C", "#BF5A3D", "#3D6BBF", "#8C6A1C", "#7A4FA3")
-    val brandColors = linkedMapOf<String, String>()
-    val placesJson = JSONArray().apply {
-        places.forEach { place ->
-            val color = brandColors.getOrPut(place.brandQuery) {
-                palette[brandColors.size % palette.size]
-            }
-            put(
-                JSONObject().apply {
-                    put("name", place.name)
-                    put("brandName", place.brandName)
-                    put("address", place.address)
-                    put("latitude", place.latitude)
-                    put("longitude", place.longitude)
-                    put("color", color)
-                }
-            )
-        }
-    }
-
-    return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-          <style>
-            html, body, #map {
-              margin: 0;
-              padding: 0;
-              height: 100%;
-              width: 100%;
-              background: #f3efe5;
-            }
-            .leaflet-popup-content {
-              font-family: sans-serif;
-              line-height: 1.35;
-            }
-          </style>
-        </head>
-        <body>
-          <div id="map"></div>
-          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-          <script>
-            const user = { latitude: $userLatitude, longitude: $userLongitude };
-            const places = $placesJson;
-            const map = L.map('map', { zoomControl: true });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; OpenStreetMap contributors',
-              maxZoom: 19
-            }).addTo(map);
-
-            const markerPoints = [];
-
-            const userMarker = L.circleMarker([user.latitude, user.longitude], {
-              radius: 8,
-              color: '#244e89',
-              fillColor: '#2f6dc0',
-              fillOpacity: 0.95,
-              weight: 2
-            }).addTo(map);
-            userMarker.bindPopup('<strong>You are here</strong>');
-            markerPoints.push([user.latitude, user.longitude]);
-
-            places.forEach((place) => {
-              const marker = L.circleMarker([place.latitude, place.longitude], {
-                radius: 6,
-                color: place.color,
-                fillColor: place.color,
-                fillOpacity: 0.92,
-                weight: 1
-              }).addTo(map);
-              const address = place.address ? `<div>${'$'}{place.address}</div>` : '';
-              marker.bindPopup(
-                `<strong>${'$'}{place.name}</strong><div>${'$'}{place.brandName}</div>${'$'}{address}`
-              );
-              markerPoints.push([place.latitude, place.longitude]);
-            });
-
-            if (markerPoints.length > 1) {
-              map.fitBounds(L.latLngBounds(markerPoints).pad(0.22));
-            } else {
-              map.setView([user.latitude, user.longitude], 13);
-            }
-          </script>
-        </body>
-        </html>
-    """.trimIndent()
 }
 
 @Preview(showBackground = true)

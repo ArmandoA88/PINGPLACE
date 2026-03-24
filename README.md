@@ -20,7 +20,7 @@ Tagline: `Reminders that show up when you show up`
 - Room
 - WorkManager
 - Google Play Services Location
-- Google Places Text Search integration via HTTPS
+- OpenStreetMap store lookup via Overpass
 
 ## Project shape
 
@@ -33,13 +33,13 @@ Tagline: `Reminders that show up when you show up`
 ## Setup
 
 1. Open the project in Android Studio.
-2. Add a Places API key as a Gradle property:
+2. Optional: point the app at your own offline-pack catalog with a Gradle property:
 
 ```properties
-PLACES_API_KEY=your_key_here
+OFFLINE_PACK_MANIFEST_URL=https://example.com/offline-packs/catalog.json
 ```
 
-You can place that in your user `gradle.properties` file or pass it on the command line.
+If you skip that, PingPlace uses the bundled offline-pack catalog.
 
 ## Current behavior
 
@@ -54,5 +54,6 @@ You can place that in your user `gradle.properties` file or pass it on the comma
 ## Notes
 
 - Travel-time mode currently uses a speed-based local estimate when route data is unavailable.
-- Nearby place lookup expects a valid Google Places API key.
-- The project was verified with static review and a local Gradle startup attempt; the build environment on this machine failed before compilation while loading Gradle's Windows native library.
+- Nearby place lookup uses free OpenStreetMap/Overpass data and does not require an API key.
+- The public Overpass service is a practical no-key default for light use; if usage grows, switch to your own hosted endpoint.
+- The app was rebuilt locally and the debug APK was installed on an emulator on March 23, 2026.

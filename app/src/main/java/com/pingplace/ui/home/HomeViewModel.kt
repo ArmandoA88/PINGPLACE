@@ -7,9 +7,9 @@ import com.pingplace.data.local.entity.ReminderEntity
 import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.domain.BlockedTimeEvaluator
 import com.pingplace.location.DeviceLocationClient
-import com.pingplace.location.GooglePlacesSearchProvider
 import com.pingplace.location.NearbyPlace
 import com.pingplace.location.NearbyPlaceSearchProvider
+import com.pingplace.location.OpenStreetMapSearchProvider
 import com.pingplace.model.ReminderFilter
 import com.pingplace.model.ReminderPriority
 import com.pingplace.model.BrandCatalog
@@ -496,11 +496,14 @@ class HomeViewModel(
 
     private fun nearbyErrorMessage(error: Throwable): String {
         return when (error) {
-            is GooglePlacesSearchProvider.MissingPlacesApiKeyException ->
-                "Nearby stores need a valid Places API key."
+            is OpenStreetMapSearchProvider.RateLimitedException ->
+                "Free nearby lookup is busy right now. Try again in a minute."
 
-            is GooglePlacesSearchProvider.PlacesRequestFailedException ->
-                "Nearby lookup failed with Places status ${error.code}."
+            is OpenStreetMapSearchProvider.ServiceBusyException ->
+                "Free nearby lookup timed out. Try again in a minute."
+
+            is OpenStreetMapSearchProvider.RequestFailedException ->
+                "Free nearby lookup failed with status ${error.code}."
 
             is OfflinePlaceSearchProvider.OfflineCoverageMissingException ->
                 "No offline pack is installed for this area."
