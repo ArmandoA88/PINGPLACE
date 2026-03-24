@@ -16,15 +16,29 @@ class ConfigurablePlaceSearchProvider(
         currentLocation: Location,
         radiusMeters: Double
     ): Result<List<NearbyPlace>> {
+        fun liveLookupDeferred(): Result<List<NearbyPlace>> {
+            return Result.failure(LiveLookupDeferredException())
+        }
+
         return when (repository.getUserSettings().placeSearchMode) {
             PlaceSearchMode.OFFLINE_ONLY -> offlineProvider.searchNearby(query, currentLocation, radiusMeters)
-            PlaceSearchMode.LIVE_ONLY -> liveProvider.searchNearby(query, currentLocation, radiusMeters)
+            PlaceSearchMode.LIVE_ONLY -> {
+                if (LiveLookupPolicy.allowsLiveLookup(currentLocation)) {
+                    liveProvider.searchNearby(query, currentLocation, radiusMeters)
+                } else {
+                    liveLookupDeferred()
+                }
+            }
+
             PlaceSearchMode.HYBRID -> {
                 val offline = offlineProvider.searchNearby(query, currentLocation, radiusMeters)
                 val offlinePlaces = offline.getOrNull()
                 when {
                     offlinePlaces.isNullOrEmpty().not() -> offline
-                    else -> liveProvider.searchNearby(query, currentLocation, radiusMeters)
+                    LiveLookupPolicy.allowsLiveLookup(currentLocation) ->
+                        liveProvider.searchNearby(query, currentLocation, radiusMeters)
+
+                    else -> liveLookupDeferred()
                 }
             }
         }

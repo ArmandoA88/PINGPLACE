@@ -9,6 +9,7 @@ import com.pingplace.data.local.PingPlaceDatabase
 import com.pingplace.data.repository.DefaultPingPlaceRepository
 import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.location.ConfigurablePlaceSearchProvider
+import com.pingplace.location.CachingNearbyPlaceSearchProvider
 import com.pingplace.location.DeviceLocationClient
 import com.pingplace.location.NearbyPlaceSearchProvider
 import com.pingplace.location.OpenStreetMapSearchProvider
@@ -57,7 +58,10 @@ class AppContainer(context: Context) {
         offlinePlaceDao = database.offlinePlaceDao(),
         offlineRegionDao = database.offlineRegionDao()
     )
-    private val livePlaceSearchProvider = OpenStreetMapSearchProvider(client = httpClient)
+    private val livePlaceSearchProvider = CachingNearbyPlaceSearchProvider(
+        delegate = OpenStreetMapSearchProvider(client = httpClient),
+        offlinePackManager = offlinePackManager
+    )
     val placeSearchProvider: NearbyPlaceSearchProvider = ConfigurablePlaceSearchProvider(
         repository = repository,
         offlineProvider = offlinePlaceSearchProvider,

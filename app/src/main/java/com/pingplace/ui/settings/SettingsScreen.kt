@@ -155,7 +155,7 @@ fun SettingsScreen(
                         }
                     }
                     Text(
-                        "Hybrid uses offline packs first, then free OpenStreetMap lookup. Offline only never uses the network.",
+                        "Hybrid uses downloaded maps and saved nearby stores first, then free OpenStreetMap lookup when needed. Offline only never uses the network.",
                         modifier = Modifier.padding(top = 12.dp)
                     )
                 }

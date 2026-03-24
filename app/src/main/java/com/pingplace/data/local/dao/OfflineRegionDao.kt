@@ -22,6 +22,15 @@ interface OfflineRegionDao {
     @Query(
         """
         SELECT id FROM offline_regions
+        WHERE sourceUrl = :sourceUrl
+        ORDER BY downloadedAtEpochMillis DESC
+        """
+    )
+    suspend fun getIdsBySourceUrlOrderByDownloadedAtDesc(sourceUrl: String): List<String>
+
+    @Query(
+        """
+        SELECT id FROM offline_regions
         WHERE sourceUrl LIKE 'asset://offline-packs/%'
           AND updatedAtEpochMillis = :legacyUpdatedAtEpochMillis
         """

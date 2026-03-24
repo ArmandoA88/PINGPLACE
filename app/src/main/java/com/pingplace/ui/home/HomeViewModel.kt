@@ -7,6 +7,7 @@ import com.pingplace.data.local.entity.ReminderEntity
 import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.domain.BlockedTimeEvaluator
 import com.pingplace.location.DeviceLocationClient
+import com.pingplace.location.LiveLookupDeferredException
 import com.pingplace.location.NearbyPlace
 import com.pingplace.location.NearbyPlaceSearchProvider
 import com.pingplace.location.OpenStreetMapSearchProvider
@@ -18,9 +19,6 @@ import com.pingplace.model.ReminderRepeatType
 import com.pingplace.model.TriggerType
 import com.pingplace.model.UnitsSystem
 import com.pingplace.offline.OfflinePlaceSearchProvider
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -374,23 +372,35 @@ class HomeViewModel(
             return
         }
 
-        val results = coroutineScope {
-            brands.map { brand ->
-                async {
+        val results = buildList {
+            for (brand in brands) {
+                add(
                     brand to placeSearchProvider.searchNearby(
                         query = brand.brandQuery,
                         currentLocation = location,
                         radiusMeters = DASHBOARD_RADIUS_METERS
                     )
+                )
+                if (buildNearbyStores(this).size >= MAX_TOTAL_NEARBY_STORES) {
+                    break
                 }
-            }.awaitAll()
+            }
         }
 
-        val nearbyStores = buildNearbyStores(results)
-        val error = if (nearbyStores.isEmpty()) {
-            results.firstNotNullOfOrNull { (_, result) ->
-                result.exceptionOrNull()?.let(::nearbyErrorMessage)
-            }
+        val freshNearbyStores = buildNearbyStores(results)
+        val firstError = results.firstNotNullOfOrNull { (_, result) ->
+            result.exceptionOrNull()
+        }
+        val showingCachedSnapshot = freshNearbyStores.isEmpty() &&
+            firstError != null &&
+            previous.nearbyStores.isNotEmpty()
+        val nearbyStores = when {
+            freshNearbyStores.isNotEmpty() -> freshNearbyStores
+            showingCachedSnapshot -> previous.nearbyStores
+            else -> emptyList()
+        }
+        val error = if (freshNearbyStores.isEmpty()) {
+            firstError?.let { nearbyErrorMessage(it, showingCachedSnapshot) }
         } else {
             null
         }
@@ -495,20 +505,36 @@ class HomeViewModel(
     }
 
     private fun nearbyErrorMessage(error: Throwable): String {
+        return nearbyErrorMessage(error, showingCachedSnapshot = false)
+    }
+
+    private fun nearbyErrorMessage(
+        error: Throwable,
+        showingCachedSnapshot: Boolean
+    ): String {
+        val snapshotSuffix = if (showingCachedSnapshot) {
+            " Showing your last nearby snapshot."
+        } else {
+            ""
+        }
+
         return when (error) {
+            is LiveLookupDeferredException ->
+                "Live nearby lookup only runs while you're driving or moving fast. Saved offline stores still match in this area.$snapshotSuffix"
+
             is OpenStreetMapSearchProvider.RateLimitedException ->
-                "Free nearby lookup is busy right now. Try again in a minute."
+                "Free nearby lookup is busy right now. Try again in a minute.$snapshotSuffix"
 
             is OpenStreetMapSearchProvider.ServiceBusyException ->
-                "Free nearby lookup timed out. Try again in a minute."
+                "Free nearby lookup timed out. Try again in a minute.$snapshotSuffix"
 
             is OpenStreetMapSearchProvider.RequestFailedException ->
-                "Free nearby lookup failed with status ${error.code}."
+                "Free nearby lookup failed with status ${error.code}.$snapshotSuffix"
 
             is OfflinePlaceSearchProvider.OfflineCoverageMissingException ->
-                "No offline pack is installed for this area."
+                "No offline pack is installed for this area.$snapshotSuffix"
 
-            else -> "Nearby stores could not be loaded right now."
+            else -> "Nearby stores could not be loaded right now.$snapshotSuffix"
         }
     }
 

@@ -1,13 +1,16 @@
 package com.pingplace.offline
 
 import android.content.Context
+import android.location.Location
 import com.pingplace.BuildConfig
 import androidx.room.withTransaction
 import com.pingplace.data.local.PingPlaceDatabase
 import com.pingplace.data.local.entity.OfflinePlaceEntity
 import com.pingplace.data.local.entity.OfflineRegionEntity
+import com.pingplace.location.NearbyPlace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -15,6 +18,8 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.math.cos
+import kotlin.math.floor
 
 class OfflinePackManager(
     context: Context,
@@ -26,6 +31,7 @@ class OfflinePackManager(
 
     fun observeInstalledRegions(): Flow<List<OfflineRegionEntity>> =
         database.offlineRegionDao().observeAll()
+            .map { regions -> regions.filterNot(::isLiveCacheRegion) }
 
     suspend fun getRegion(regionId: String): OfflineRegionEntity? = withContext(Dispatchers.IO) {
         database.offlineRegionDao().getById(regionId)
@@ -142,6 +148,63 @@ class OfflinePackManager(
         database.withTransaction {
             database.offlinePlaceDao().deleteByRegion(regionId)
             database.offlineRegionDao().deleteById(regionId)
+        }
+    }
+
+    suspend fun cacheNearbyResults(
+        query: String,
+        currentLocation: Location,
+        radiusMeters: Double,
+        places: List<NearbyPlace>
+    ) = withContext(Dispatchers.IO) {
+        if (query.isBlank() || places.isEmpty()) return@withContext
+
+        val regionId = buildLiveCacheRegionId(currentLocation)
+        val now = System.currentTimeMillis()
+        val existingRegion = database.offlineRegionDao().getById(regionId)
+        val existingPlaces = database.offlinePlaceDao().getAllByRegion(regionId)
+            .associateBy { it.id }
+        val bounds = buildLiveCacheBounds(currentLocation, radiusMeters, existingRegion)
+        val normalizedQuery = normalizeSearchText(query)
+        val cachedPlaces = places.map { place ->
+            val id = scopedPlaceId(regionId, place.id)
+            val existing = existingPlaces[id]
+            OfflinePlaceEntity(
+                id = id,
+                regionId = regionId,
+                name = place.name,
+                address = place.address,
+                latitude = place.latitude,
+                longitude = place.longitude,
+                searchText = normalizeSearchText(
+                    listOf(
+                        existing?.searchText,
+                        normalizedQuery,
+                        place.name,
+                        place.address
+                    ).filter { !it.isNullOrBlank() }.joinToString(" ")
+                )
+            )
+        }
+
+        database.withTransaction {
+            database.offlinePlaceDao().insertAll(cachedPlaces)
+            val placeCount = database.offlinePlaceDao().countByRegion(regionId)
+            database.offlineRegionDao().insert(
+                OfflineRegionEntity(
+                    id = regionId,
+                    displayName = LIVE_CACHE_DISPLAY_NAME,
+                    downloadedAtEpochMillis = now,
+                    updatedAtEpochMillis = now,
+                    sourceUrl = LIVE_CACHE_SOURCE_URL,
+                    placeCount = placeCount,
+                    minLatitude = bounds.minLatitude,
+                    maxLatitude = bounds.maxLatitude,
+                    minLongitude = bounds.minLongitude,
+                    maxLongitude = bounds.maxLongitude
+                )
+            )
+            pruneLiveCacheRegions()
         }
     }
 
@@ -342,6 +405,55 @@ class OfflinePackManager(
 
     private fun scopedPlaceId(regionId: String, rawId: String): String = "$regionId::$rawId"
 
+    private fun buildLiveCacheRegionId(currentLocation: Location): String {
+        val latitudeBucket = floor((currentLocation.latitude + 90.0) / LIVE_CACHE_GRID_DEGREES).toInt()
+        val longitudeBucket = floor((currentLocation.longitude + 180.0) / LIVE_CACHE_GRID_DEGREES).toInt()
+        return "$LIVE_CACHE_REGION_PREFIX:$latitudeBucket:$longitudeBucket"
+    }
+
+    private fun buildLiveCacheBounds(
+        currentLocation: Location,
+        radiusMeters: Double,
+        existingRegion: OfflineRegionEntity?
+    ): Bounds {
+        val cacheRadiusMeters = radiusMeters.coerceAtLeast(MIN_LIVE_CACHE_RADIUS_METERS)
+        val latitudeDelta = cacheRadiusMeters / 111_320.0
+        val longitudeDelta = cacheRadiusMeters /
+            (111_320.0 * cos(Math.toRadians(currentLocation.latitude)).coerceAtLeast(0.1))
+
+        val freshBounds = Bounds(
+            minLatitude = currentLocation.latitude - latitudeDelta,
+            maxLatitude = currentLocation.latitude + latitudeDelta,
+            minLongitude = currentLocation.longitude - longitudeDelta,
+            maxLongitude = currentLocation.longitude + longitudeDelta
+        )
+        return if (existingRegion == null) {
+            freshBounds
+        } else {
+            Bounds(
+                minLatitude = minOf(existingRegion.minLatitude, freshBounds.minLatitude),
+                maxLatitude = maxOf(existingRegion.maxLatitude, freshBounds.maxLatitude),
+                minLongitude = minOf(existingRegion.minLongitude, freshBounds.minLongitude),
+                maxLongitude = maxOf(existingRegion.maxLongitude, freshBounds.maxLongitude)
+            )
+        }
+    }
+
+    private suspend fun pruneLiveCacheRegions() {
+        val cacheRegionIds = database.offlineRegionDao()
+            .getIdsBySourceUrlOrderByDownloadedAtDesc(LIVE_CACHE_SOURCE_URL)
+        if (cacheRegionIds.size <= MAX_LIVE_CACHE_REGIONS) return
+
+        cacheRegionIds.drop(MAX_LIVE_CACHE_REGIONS).forEach { regionId ->
+            database.offlinePlaceDao().deleteByRegion(regionId)
+            database.offlineRegionDao().deleteById(regionId)
+        }
+    }
+
+    private fun isLiveCacheRegion(region: OfflineRegionEntity): Boolean {
+        return region.sourceUrl == LIVE_CACHE_SOURCE_URL
+    }
+
     private fun fetchCatalogFromUrl(url: String): List<OfflinePackDescriptor> {
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
@@ -401,5 +513,11 @@ class OfflinePackManager(
         const val OVERPASS_INTERPRETER_URL = "https://overpass-api.de/api/interpreter"
         const val LEGACY_SAMPLE_UPDATED_AT_EPOCH_MILLIS = 1_770_000_000_000L
         const val MAP_VIEW_PLACE_LIMIT = 1_500
+        const val LIVE_CACHE_REGION_PREFIX = "live-cache"
+        const val LIVE_CACHE_SOURCE_URL = "cache://live-nearby"
+        const val LIVE_CACHE_DISPLAY_NAME = "Saved nearby stores"
+        const val LIVE_CACHE_GRID_DEGREES = 0.1
+        const val MIN_LIVE_CACHE_RADIUS_METERS = 5_000.0
+        const val MAX_LIVE_CACHE_REGIONS = 12
     }
 }

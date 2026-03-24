@@ -3,6 +3,7 @@ package com.pingplace.domain
 import android.location.Location
 import com.pingplace.data.local.entity.BlockedTimeWindowEntity
 import com.pingplace.data.local.entity.ReminderEntity
+import com.pingplace.location.LiveLookupPolicy
 import com.pingplace.location.NearbyPlace
 import com.pingplace.location.NearbyPlaceSearchProvider
 import com.pingplace.model.TriggerType
@@ -30,7 +31,7 @@ class NearbyReminderEvaluator(
             .values
             .map { brandReminders ->
                 val sample = brandReminders.first()
-                val isDrivingFast = currentLocation.hasSpeed() && currentLocation.speed >= DRIVING_SPEED_MPS
+                val isDrivingFast = LiveLookupPolicy.allowsLiveLookup(currentLocation)
                 val radius = brandReminders.maxOf { reminder ->
                     when (reminder.triggerType) {
                         TriggerType.DISTANCE -> (reminder.triggerDistanceMeters ?: 1609).toDouble()
@@ -77,9 +78,5 @@ class NearbyReminderEvaluator(
                     suppressedByBlockedTime = suppressed
                 )
             }
-    }
-
-    private companion object {
-        const val DRIVING_SPEED_MPS = 8.94f
     }
 }

@@ -329,7 +329,7 @@ private fun NearbyMapCard(
                 )
             }
 
-            if (mapState.nearbyStores.isEmpty()) {
+            if (mapState.nearbyStores.isEmpty() && mapState.errorMessage == null) {
                 Text(
                     "No matching stores found nearby yet. Add or refresh reminders to update this snapshot.",
                     style = MaterialTheme.typography.bodyMedium

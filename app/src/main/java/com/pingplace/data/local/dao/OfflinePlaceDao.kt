@@ -37,6 +37,15 @@ interface OfflinePlaceDao {
     )
     suspend fun getByRegion(regionId: String, limit: Int): List<OfflinePlaceEntity>
 
+    @Query(
+        """
+        SELECT * FROM offline_places
+        WHERE regionId = :regionId
+        ORDER BY name ASC
+        """
+    )
+    suspend fun getAllByRegion(regionId: String): List<OfflinePlaceEntity>
+
     @Query("SELECT COUNT(*) FROM offline_places WHERE regionId = :regionId")
     suspend fun countByRegion(regionId: String): Int
 
