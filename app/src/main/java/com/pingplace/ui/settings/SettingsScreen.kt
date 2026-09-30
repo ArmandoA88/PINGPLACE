@@ -167,6 +167,8 @@ fun SettingsScreen(
                         checked = settings.backgroundLocationEnabled,
                         onCheckedChange = viewModel::updateBackgroundLocationEnabled
                     )
+                    Text("Checks about every 5 seconds while driving, 10 seconds while moving, and 30 seconds at rest. Continuous monitoring uses more battery.")
+                    Text("Driving alerts allow about 45 seconds to approach a stop (up to 2 km). Unfinished errands can ping again after 3 minutes while driving, or 10 minutes otherwise. Snoozes and blocked times still apply.")
                     SwitchRow(
                         title = "Respect blocked times by default",
                         checked = settings.respectBlockedTimesByDefault,
@@ -176,7 +178,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsCard("Reliability setup") {
-                    Text("Nearby reminders work best when all of these are turned on.")
+                    Text("For reliable background alerts, open Android app settings, then Permissions, then Location, and choose Allow all the time. Keep notifications on.")
                     FlowRow(
                         modifier = Modifier.padding(top = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)

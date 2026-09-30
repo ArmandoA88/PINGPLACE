@@ -12,10 +12,10 @@ android {
         applicationId = "com.pingplace"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -77,6 +77,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose-android:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose-android:2.8.7")
     implementation("androidx.activity:activity-compose:1.10.0")
+    // Play Services pulls Fragment 1.1; Activity Result permissions require 1.3+.
+    implementation("androidx.fragment:fragment:1.5.1")
     implementation("androidx.compose.runtime:runtime-android:1.7.6")
     implementation("androidx.compose.foundation:foundation-android:1.7.6")
     implementation("androidx.compose.foundation:foundation-layout-android:1.7.6")
@@ -96,4 +98,5 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("junit:junit:4.13.2")
 }

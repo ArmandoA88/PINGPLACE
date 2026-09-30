@@ -43,7 +43,7 @@ class OfflinePlaceSearchProvider(
             }
             val distance = currentLocation.distanceTo(placeLocation).toDouble()
             NearbyPlace(
-                id = place.id,
+                id = place.id.substringAfter("::"),
                 name = place.name,
                 address = place.address,
                 latitude = place.latitude,

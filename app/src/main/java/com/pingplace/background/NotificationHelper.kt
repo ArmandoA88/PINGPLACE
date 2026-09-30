@@ -2,6 +2,7 @@ package com.pingplace.background
 
 import android.Manifest
 import android.app.NotificationChannel
+import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -28,20 +29,46 @@ class NotificationHelper(
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Alerts when you are near places tied to reminders."
+                enableVibration(true)
             }
         )
+        manager.createNotificationChannel(NotificationChannel(
+            CHANNEL_MONITORING, "Nearby monitoring", NotificationManager.IMPORTANCE_LOW
+        ).apply { description = "Shows when PingPlace is checking for nearby errands." })
     }
 
-    fun showBrandReminder(match: BrandReminderMatch, soundEnabled: Boolean = true) {
+    fun monitoringNotification(): Notification {
+        ensureChannels()
+        val pendingIntent = PendingIntent.getActivity(context, 7401,
+            Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return NotificationCompat.Builder(context, CHANNEL_MONITORING)
+            .setSmallIcon(R.drawable.ic_stat_pingplace)
+            .setContentTitle("PingPlace is watching for your places")
+            .setContentText("Faster checks while moving. Manage monitoring in Settings.")
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .build()
+    }
+
+    fun alertsAvailable(): Boolean {
+        ensureChannels()
+        return NotificationManagerCompat.from(context).areNotificationsEnabled() &&
+            context.getSystemService(NotificationManager::class.java)
+                .getNotificationChannel(CHANNEL_ERRANDS)?.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    fun showBrandReminder(match: BrandReminderMatch, soundEnabled: Boolean = true): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            return
+            return false
         }
-        ensureChannels()
+        if (!alertsAvailable()) return false
         val content = match.reminders.joinToString("\n") { "- ${it.title}" }
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -94,12 +121,17 @@ class NotificationHelper(
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(context)
-            .notify(match.brandQuery.hashCode(), notification)
+        return try {
+            NotificationManagerCompat.from(context).notify(match.brandQuery.hashCode(), notification)
+            true
+        } catch (_: SecurityException) {
+            false
+        }
     }
 
     companion object {
         const val CHANNEL_ERRANDS = "errand_reminders"
+        const val CHANNEL_MONITORING = "nearby_monitoring"
     }
 
     private fun actionPendingIntent(

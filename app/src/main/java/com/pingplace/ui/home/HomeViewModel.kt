@@ -7,7 +7,6 @@ import com.pingplace.data.local.entity.ReminderEntity
 import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.domain.BlockedTimeEvaluator
 import com.pingplace.location.DeviceLocationClient
-import com.pingplace.location.LiveLookupDeferredException
 import com.pingplace.location.NearbyPlace
 import com.pingplace.location.NearbyPlaceSearchProvider
 import com.pingplace.location.OpenStreetMapSearchProvider
@@ -519,8 +518,6 @@ class HomeViewModel(
         }
 
         return when (error) {
-            is LiveLookupDeferredException ->
-                "Live nearby lookup only runs while you're driving or moving fast. Saved offline stores still match in this area.$snapshotSuffix"
 
             is OpenStreetMapSearchProvider.RateLimitedException ->
                 "Free nearby lookup is busy right now. Try again in a minute.$snapshotSuffix"

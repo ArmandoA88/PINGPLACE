@@ -1,5 +1,10 @@
 package com.pingplace.ui.common
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -14,9 +19,11 @@ fun SelectionChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    accentColor: Color = MeadowGreen
+    accentColor: Color = MaterialTheme.colorScheme.primary
 ) {
+    val scale by animateFloatAsState(if (selected) 1.03f else 1f, spring(dampingRatio = 0.65f), label = "chip selection")
     FilterChip(
+        modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale },
         selected = selected,
         onClick = onClick,
         label = { Text(label) },

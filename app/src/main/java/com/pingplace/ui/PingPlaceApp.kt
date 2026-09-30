@@ -1,6 +1,14 @@
 package com.pingplace.ui
 
 import android.net.Uri
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
+import com.pingplace.background.MovementMonitorService
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -87,6 +95,7 @@ fun PingPlaceApp(
     openBatterySettings: () -> Unit
 ) {
     val navController = rememberNavController()
+    val monitoringStatus by MovementMonitorService.status.collectAsStateWithLifecycle()
     val settings by container.repository.observeUserSettings()
         .collectAsStateWithLifecycle(initialValue = UserSettingsEntity())
 
@@ -122,11 +131,12 @@ fun PingPlaceApp(
             modifier = Modifier.fillMaxSize(),
             bottomBar = {
                 if (showBottomBar) {
-                    NavigationBar {
+                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                         topLevelDestinations.forEach { destination ->
                             val selected = currentDestination?.hierarchy?.any {
                                 it.route == destination.route
                             } == true
+                            val iconScale by animateFloatAsState(if (selected) 1.12f else 1f, label = "navigation selection")
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {
@@ -147,15 +157,15 @@ fun PingPlaceApp(
                                     selectedTextColor = if (destination.route == PingPlaceRoutes.BLOCKED) {
                                         Ember
                                     } else {
-                                        MeadowGreen
+                                        MaterialTheme.colorScheme.primary
                                     },
                                     indicatorColor = if (destination.route == PingPlaceRoutes.BLOCKED) {
                                         Ember
                                     } else {
-                                        MeadowGreen
+                                        MaterialTheme.colorScheme.primary
                                     }
                                 ),
-                                icon = { Icon(destination.icon, contentDescription = destination.label) },
+                                icon = { Icon(destination.icon, contentDescription = destination.label, modifier = Modifier.graphicsLayer { scaleX = iconScale; scaleY = iconScale }) },
                                 label = { androidx.compose.material3.Text(destination.label) }
                             )
                         }
@@ -165,6 +175,10 @@ fun PingPlaceApp(
         ) { padding ->
             NavHost(
                 navController = navController,
+                enterTransition = { fadeIn(tween(240)) + slideInHorizontally(tween(280)) { it / 12 } },
+                exitTransition = { fadeOut(tween(160)) },
+                popEnterTransition = { fadeIn(tween(240)) },
+                popExitTransition = { fadeOut(tween(160)) + slideOutHorizontally(tween(240)) { it / 12 } },
                 startDestination = if (settings.onboardingComplete) PingPlaceRoutes.HOME else PingPlaceRoutes.ONBOARDING
             ) {
                 composable(PingPlaceRoutes.ONBOARDING) {
@@ -199,7 +213,10 @@ fun PingPlaceApp(
                     HomeScreen(
                         innerPadding = padding,
                         viewModel = vm,
-                        isLocationServicesEnabled = reliabilityStatus.locationServicesEnabled,
+                        reliabilityStatus = reliabilityStatus,
+                        monitoringStatus = monitoringStatus,
+                        settings = settings,
+                        onSettings = { navController.navigate(PingPlaceRoutes.SETTINGS) { launchSingleTop = true } },
                         onAddReminder = { navController.navigate(PingPlaceRoutes.ADD) },
                         onBrandClick = { navController.navigate(PingPlaceRoutes.brand(it)) },
                         onEditReminder = { navController.navigate(PingPlaceRoutes.edit(it)) }

@@ -52,10 +52,10 @@ class DeviceLocationClient(context: Context) {
 
     private fun isUsableFallback(location: Location): Boolean {
         val ageMillis = (System.currentTimeMillis() - location.time).coerceAtLeast(0L)
-        return ageMillis <= MAX_FALLBACK_AGE_MILLIS || location.isMock
+        return ageMillis <= MAX_FALLBACK_AGE_MILLIS
     }
 
     private companion object {
-        const val MAX_FALLBACK_AGE_MILLIS = 5 * 60 * 1000L
+        const val MAX_FALLBACK_AGE_MILLIS = 30_000L
     }
 }

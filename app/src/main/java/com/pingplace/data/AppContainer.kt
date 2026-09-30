@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.pingplace.background.BrandGeofenceManager
 import com.pingplace.background.MonitorScheduler
 import com.pingplace.background.NotificationHelper
+import com.pingplace.background.ReminderMonitor
 import com.pingplace.data.local.PingPlaceDatabase
 import com.pingplace.data.repository.DefaultPingPlaceRepository
 import com.pingplace.data.repository.PingPlaceRepository
@@ -32,7 +33,7 @@ class AppContainer(context: Context) {
     )
         .fallbackToDestructiveMigration()
         .build()
-    private val httpClient = OkHttpClient()
+    private val httpClient = OkHttpClient.Builder().callTimeout(12, TimeUnit.SECONDS).build()
     private val offlineHttpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(2, TimeUnit.MINUTES)
@@ -70,6 +71,7 @@ class AppContainer(context: Context) {
     val notificationHelper = NotificationHelper(appContext)
     val geofenceManager = BrandGeofenceManager(appContext)
     val monitorScheduler = MonitorScheduler(appContext)
+    val reminderMonitor = ReminderMonitor(this)
 
     init {
         ioScope.launch {

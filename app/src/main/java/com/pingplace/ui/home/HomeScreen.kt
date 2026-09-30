@@ -1,5 +1,18 @@
 package com.pingplace.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.outlined.Search
+import com.pingplace.background.MonitoringStatus
+import com.pingplace.data.local.entity.UserSettingsEntity
+import com.pingplace.ui.common.ReliabilityStatus
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -56,7 +69,10 @@ import com.pingplace.ui.theme.PingPlaceTheme
 fun HomeScreen(
     innerPadding: PaddingValues,
     viewModel: HomeViewModel,
-    isLocationServicesEnabled: Boolean,
+    reliabilityStatus: ReliabilityStatus,
+    monitoringStatus: MonitoringStatus,
+    settings: UserSettingsEntity,
+    onSettings: () -> Unit,
     onAddReminder: () -> Unit,
     onBrandClick: (String) -> Unit,
     onEditReminder: (Long) -> Unit
@@ -64,21 +80,26 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
+        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("PingPlace")
-                        Text("Brand-based reminders", style = MaterialTheme.typography.labelLarge)
+                        Text("pingplace", style = MaterialTheme.typography.titleLarge)
+                        Text("Make room for the little things.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddReminder) {
-                Icon(Icons.Outlined.Add, contentDescription = "Add reminder")
-            }
+            ExtendedFloatingActionButton(
+                onClick = onAddReminder,
+                icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                text = { Text("New ping") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         }
     ) { padding ->
         LazyColumn(
@@ -88,28 +109,11 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(
                 top = padding.calculateTopPadding(),
-                bottom = innerPadding.calculateBottomPadding() + 100.dp
+                bottom = 100.dp
             )
         ) {
-            item {
-                if (!isLocationServicesEnabled) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Outlined.LocationOff, contentDescription = null)
-                            Text("Location services are off. Nearby alerts are limited until they are back on.")
-                        }
-                    }
-                }
+            item(key = "monitoring") {
+                MonitoringCard(monitoringStatus, settings, reliabilityStatus, onSettings)
             }
             item {
                 NearbyDashboardSection(
@@ -126,13 +130,15 @@ fun HomeScreen(
                 OutlinedTextField(
                     value = uiState.searchQuery,
                     onValueChange = viewModel::onSearchChanged,
-                    label = { Text("Search reminders or brands") },
+                    label = { Text("Find an errand") },
+                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp)
                 )
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ReminderFilter.entries.forEach { filter ->
                         SelectionChip(
                             selected = uiState.filter == filter,
@@ -147,8 +153,9 @@ fun HomeScreen(
                     EmptyStateCard(onAddReminder = onAddReminder)
                 }
             } else {
-                items(uiState.groups) { group ->
+                items(uiState.groups, key = { it.brandQuery }) { group ->
                     BrandCard(
+                        modifier = Modifier.animateItem(),
                         group = group,
                         units = uiState.units,
                         onOpen = { onBrandClick(group.brandQuery) },
@@ -229,7 +236,7 @@ private fun NearbyMapCard(
     units: UnitsSystem,
     onRefreshNearby: () -> Unit
 ) {
-    Card(modifier = modifier, shape = RoundedCornerShape(28.dp)) {
+    Card(modifier = modifier.animateContentSize(), shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -245,11 +252,11 @@ private fun NearbyMapCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text("Near You", style = MaterialTheme.typography.titleLarge)
+                    Text("Around you", style = MaterialTheme.typography.titleLarge)
                     Text(
                         when {
                             mapState.nearbyStores.isNotEmpty() ->
-                                "Showing ${mapState.nearbyStores.size} nearby stores around your current location."
+                                "${mapState.nearbyStores.size} places for your next stop"
 
                             mapState.latitude != null ->
                                 "Your current location is ready. Refresh to check nearby stores."
@@ -259,7 +266,7 @@ private fun NearbyMapCard(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
-                Button(onClick = onRefreshNearby, enabled = !mapState.isLoading) {
+                TextButton(onClick = onRefreshNearby, enabled = !mapState.isLoading) {
                     Text(if (mapState.isLoading) "Refreshing..." else "Refresh")
                 }
             }
@@ -281,7 +288,7 @@ private fun NearbyMapCard(
                     DashboardTileMap(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(250.dp),
+                            .height(200.dp),
                         userLatitude = mapState.latitude,
                         userLongitude = mapState.longitude,
                         places = mapState.nearbyStores
@@ -292,7 +299,7 @@ private fun NearbyMapCard(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(250.dp),
+                            .height(200.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
@@ -303,7 +310,7 @@ private fun NearbyMapCard(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(250.dp),
+                            .height(200.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
@@ -336,7 +343,7 @@ private fun NearbyMapCard(
                 )
             } else {
                 HorizontalDivider()
-                mapState.nearbyStores.take(4).forEach { place ->
+                mapState.nearbyStores.take(2).forEach { place ->
                     NearbyStoreRow(place = place, units = units)
                 }
             }
@@ -355,8 +362,9 @@ private fun QuickAddReminderCard(
     onSaveQuickReminder: () -> Unit,
     onOpenFullEditor: () -> Unit
 ) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
     Card(
-        modifier = modifier,
+        modifier = modifier.animateContentSize(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -366,11 +374,15 @@ private fun QuickAddReminderCard(
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Quick Add Reminder", style = MaterialTheme.typography.titleLarge)
-            Text(
-                "Create a reminder right from the dashboard, then keep using the full editor for extra details when you need them.",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("What's on your list?", style = MaterialTheme.typography.titleMedium)
+                    Text("An errand now. A ping later.", style = MaterialTheme.typography.bodySmall)
+                }
+                TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Close" else "+ Add") }
+            }
+            AnimatedVisibility(visible = expanded) {
+              Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
                 value = quickAdd.title,
                 onValueChange = onQuickAddTitleChange,
@@ -414,13 +426,15 @@ private fun QuickAddReminderCard(
                     Text(if (quickAdd.isSaving) "Saving..." else "Save reminder")
                 }
                 OutlinedButton(onClick = onOpenFullEditor) {
-                    Text("Open full editor")
+                    Text("More options")
                 }
             }
             Text(
                 "New reminders use your saved default trigger and blocked-time settings.",
                 style = MaterialTheme.typography.bodySmall
             )
+              }
+            }
         }
     }
 }
@@ -472,6 +486,7 @@ private fun EmptyStateCard(onAddReminder: () -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BrandCard(
+    modifier: Modifier = Modifier,
     group: BrandGroupUiModel,
     units: UnitsSystem,
     onOpen: () -> Unit,
@@ -483,7 +498,8 @@ private fun BrandCard(
     onDeleteReminder: (Long) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().animateContentSize(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(28.dp),
         onClick = onOpen
     ) {

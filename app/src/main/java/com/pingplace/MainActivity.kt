@@ -18,6 +18,10 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.pingplace.data.repository.PingPlaceRepository
 import com.pingplace.ui.common.ReliabilityStatus
 import com.pingplace.ui.PingPlaceApp
@@ -50,9 +54,11 @@ class MainActivity : ComponentActivity() {
                 refreshReliabilityStatus()
             }
         val fineLocationPermissionLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-                if (granted) {
+            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+                refreshReliabilityStatus()
+                if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
                     (application as PingPlaceApplication).container.monitorScheduler.triggerImmediateRefresh()
+                    syncMonitoring()
                 }
                 refreshReliabilityStatus()
             }
@@ -77,10 +83,17 @@ class MainActivity : ComponentActivity() {
                     }
                 },
                 requestFineLocation = {
-                    fineLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    fineLocationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                 },
                 requestBackgroundLocation = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    updateSettings(repository) { it.copy(backgroundLocationEnabled = true) }
+                    if (!reliabilityStatus.fineLocationGranted) {
+                        fineLocationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", packageName, null)
+                        })
+                    } else {
                         backgroundLocationPermissionLauncher.launch(
                             Manifest.permission.ACCESS_BACKGROUND_LOCATION
                         )
@@ -97,25 +110,35 @@ class MainActivity : ComponentActivity() {
                     )
                 },
                 openBatterySettings = {
-                    val powerManager = getSystemService(PowerManager::class.java)
-                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                        !powerManager.isIgnoringBatteryOptimizations(packageName)
-                    ) {
-                        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                            data = Uri.parse("package:$packageName")
-                        }
-                    } else {
-                        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                    }
-                    startActivity(intent)
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                 }
             )
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(repository.observeUserSettings(), repository.observeReminders()) { settings, reminders ->
+                    settings.backgroundLocationEnabled && reminders.any { !it.isCompleted }
+                }.distinctUntilChanged().collect { syncMonitoring() }
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
         refreshReliabilityStatus()
+        syncMonitoring()
+    }
+
+    private fun syncMonitoring() {
+        lifecycleScope.launch {
+            val container = (application as PingPlaceApplication).container
+            if (container.repository.getUserSettings().backgroundLocationEnabled && reliabilityStatus.fineLocationGranted) {
+                container.monitorScheduler.scheduleMonitoring()
+                container.monitorScheduler.triggerImmediateRefresh()
+            } else {
+                container.monitorScheduler.cancelMonitoring()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -144,14 +167,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 true
             },
-            notificationsGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            },
+            notificationsGranted = (application as PingPlaceApplication).container.notificationHelper.alertsAvailable(),
             batteryOptimizationDisabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 powerManager.isIgnoringBatteryOptimizations(packageName)
             } else {

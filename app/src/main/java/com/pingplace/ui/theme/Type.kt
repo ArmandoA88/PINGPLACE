@@ -11,7 +11,8 @@ val PingPlaceTypography = Typography(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
         fontSize = 32.sp,
-        lineHeight = 36.sp
+        lineHeight = 36.sp,
+        letterSpacing = (-1).sp
     ),
     headlineSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
